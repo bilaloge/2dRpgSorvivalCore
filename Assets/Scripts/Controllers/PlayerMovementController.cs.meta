@@ -1,2 +1,17 @@
 fileFormatVersion: 2
 guid: 7d92b6511174e4c49b8a7be6552228cb
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - rb2D: {instanceID: 0}
+  - animator: {instanceID: 0}
+  - moveAction: {fileID: -1680190386980627800, guid: 3590b91b4603b465dbb4216d601bff33, type: 3}
+  - dashAction: {fileID: -2099379676528639254, guid: 3590b91b4603b465dbb4216d601bff33, type: 3}
+  - playerStats: {instanceID: 0}
+  - healthSystem: {instanceID: 0}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

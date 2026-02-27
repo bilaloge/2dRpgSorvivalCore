@@ -2,6 +2,7 @@ using DG.Tweening;
 using System;
 using Unity.Mathematics;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class PlayerMovementController : MonoBehaviour
 {
@@ -9,13 +10,20 @@ public class PlayerMovementController : MonoBehaviour
     [SerializeField] private Rigidbody2D rb2D;
     [SerializeField] private Animator animator;
     [SerializeField] public bool _isReadyToMove = true;
+
     [SerializeField] private float dashDistance = 3f;
     [SerializeField] private float dashDuration = 0.1f;
-    [SerializeField] private KeyCode dashKey = KeyCode.Mouse0;
-    [SerializeField] private LayerMask obstacleMask;
     [SerializeField] private byte _dashCooldown = 1;
     [SerializeField] private float _distanceBetweenImages = 0.1f;
+
+    [Header("Input Settings")]
+
+    [SerializeField] private InputActionReference moveAction;
+    [SerializeField] private InputActionReference dashAction;
+
+    [SerializeField] private LayerMask obstacleMask;
     [SerializeField] private PlayerStats playerStats;
+    [SerializeField] private HealthSystem healthSystem;
     //[SerializeField] private ParticleSystem dirtParticle;
 
     private Vector2 input;
@@ -23,16 +31,32 @@ public class PlayerMovementController : MonoBehaviour
     private bool _canDash = true;
     private bool _isMoving = false;
     private float _lastImagePosX;
+    public float dashEnergyCost = 10;
+
+    private bool _dashRequested = false;
+    private Vector2 _dashDirection;
     #endregion
+
+    private void OnEnable()
+    {
+        if (moveAction != null) moveAction.action.Enable();
+        if (dashAction != null) dashAction.action.Enable();
+    }
+
+    private void OnDisable()
+    {
+        if (moveAction != null) moveAction.action.Disable();
+        if (dashAction != null) dashAction.action.Disable();
+    }
 
     private void Update()
     {
-        input.x = Input.GetAxisRaw("Horizontal");
-        input.y = Input.GetAxisRaw("Vertical");
-        input.Normalize();
+        if (moveAction != null)
+        {
+            input = moveAction.action.ReadValue<Vector2>();
+        }
 
         _isMoving = input != Vector2.zero;
-
         animator.SetBool("isMoving", _isMoving);
 
         if (_isMoving)
@@ -44,17 +68,30 @@ public class PlayerMovementController : MonoBehaviour
             }
         }
 
-        if (Input.GetKeyDown(dashKey) && !_isDashing && _canDash && input != Vector2.zero)
+        if (dashAction != null && dashAction.action.WasPressedThisFrame() && !_isDashing && _canDash && input != Vector2.zero)
         {
-            Dash(input.normalized);
+            if (healthSystem.currentEnergy >= dashEnergyCost)
+            {
+                _dashRequested = true;
+                _dashDirection = input.normalized;
+            }
+            else
+            {
+                Debug.Log("Yeterli enerji yok, dash yapýlamaz.");
+            }
         }
-
     }
     private void FixedUpdate()
     {
         if (_isReadyToMove)
         {
             MovePlayer();
+        }
+
+        if (_dashRequested)
+        {
+            _dashRequested = false;
+            Dash(_dashDirection);
         }
     }
 
@@ -64,11 +101,15 @@ public class PlayerMovementController : MonoBehaviour
         //rb2D.linearVelocity = input * _moveSpeed; bu da bi ihtimal. eðer hýza baðlý bir aksiyon istiyorsan!!!
     }
 
+
     private void Dash(Vector2 direction)
     {
         _isDashing = true;
         _canDash = false;
         _isReadyToMove = false;
+
+        healthSystem.SetInvulnerable(true);
+        healthSystem.currentEnergy -= dashEnergyCost;
 
         Vector2 start = rb2D.position;
         Vector2 target = start + direction * dashDistance;
@@ -82,7 +123,7 @@ public class PlayerMovementController : MonoBehaviour
         AfterImagePoolScript.Instance.GetFromPool();
         _lastImagePosX = transform.position.x;
 
-        rb2D.DOMove(target , dashDuration).SetEase(Ease.OutSine).OnComplete(() =>
+        rb2D.DOMove(target, dashDuration).SetEase(Ease.OutSine).OnComplete(() =>
         {
             if (Mathf.Abs(transform.position.x - _lastImagePosX) >= _distanceBetweenImages)
             {
@@ -92,8 +133,9 @@ public class PlayerMovementController : MonoBehaviour
 
             _isDashing = false;
             _isReadyToMove = true;
-            Invoke(nameof(ResetDash), _dashCooldown);
+            healthSystem.SetInvulnerable(false);
 
+            Invoke(nameof(ResetDash), _dashCooldown);
         });
     }
     private void ResetDash()
@@ -101,7 +143,6 @@ public class PlayerMovementController : MonoBehaviour
         _canDash = true;
     }
 
-    // Ölüm olayýný tetikler
     public void Die()
     {
         if (!_isReadyToMove) return;

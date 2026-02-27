@@ -90,8 +90,7 @@ public class MEnemyMovementController : MonoBehaviour
             if (healthSystem != null)
             {
                 float damage = enemyData._attackPower;
-                healthSystem.TakeDamage(damage); // Zırh/direnç burada dikkate alınabilir
-                Debug.Log(damage + " hasar verildi (çarpışma ile)");
+                healthSystem.TakeDamage(damage); // Zırh/direnç burada dikkate alınmıyacak. healthsysteme git
                 attackCooldown = 1f / enemyData._attackSpeed;
             }
         }

@@ -4,20 +4,24 @@ public class PlayerStats : MonoBehaviour
 {
     public float baseMaxHealth;
     public float currentMaxHealth;
-    public float currentHealth;
+    private float currentHealth;
 
     public float baseMaxMana;
     public float currentMaxMana;
-    public float currentMana;
+    private float currentMana;
 
     public float baseMaxEnergy;
     public float currentMaxEnergy;
-    public float currentEnergy;
+    private float currentEnergy;
 
     public float Armor;
     public float MagicResist;
     public float AttackPower;
     public float MoveSpeed;
+
+    public sbyte healthRegenRate = 1; 
+    public sbyte manaRegenRate = 1;
+    public sbyte energyRegenRate = 1;
 
     private void Awake()
     {

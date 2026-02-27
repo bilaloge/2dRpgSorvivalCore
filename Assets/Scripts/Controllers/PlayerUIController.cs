@@ -13,12 +13,12 @@ public class PlayerUIController : MonoBehaviour
     private void Start()
     {
 
-        // Barlarý baþlat
+        // Barlarýn max deðerleri
         healthSlider.maxValue = playerStats.currentMaxHealth;
         manaSlider.maxValue = playerStats.currentMaxMana;
         energySlider.maxValue = playerStats.currentMaxEnergy;
 
-        // Barlarý mevcut deðerler ile baþlat
+        // Barlarý mevcut deðerleri
         healthSlider.value = healthSystem.currentHealth;
         manaSlider.value = healthSystem.currentMana;
         energySlider.value = healthSystem.currentEnergy;
