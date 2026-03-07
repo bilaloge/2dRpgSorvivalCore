@@ -1,28 +1,60 @@
 using UnityEngine;
 using TMPro;
+using System.Collections;
 
 public class ClockUIController : MonoBehaviour
 {
     [SerializeField] private TextMeshProUGUI clockText;
+    [SerializeField] private RectTransform dayNightWheel;
+    [SerializeField] private float rotationDuration = 0.5f;
 
-    private void Start()
+    private Coroutine rotationCoroutine;
+    private void OnEnable()
     {
-        if (GameManager.Instance != null)
+        if (TimeManager.Instance != null)
         {
-            GameManager.Instance.OnDayNightCycleUpdated += OnDayNightCycleHandler;
+            TimeManager.Instance.OnTimeChanged += HandleTimeChange;
         }
     }
 
-    private void OnDestroy()
+    private void OnDisable()
     {
-        if (GameManager.Instance != null)
+        if (TimeManager.Instance != null)
+            TimeManager.Instance.OnTimeChanged -= HandleTimeChange;
+    }
+    private void HandleTimeChange(int hours, int minutes)
+    {
+        if (clockText != null)
+            clockText.text = $"{hours:D2}:{minutes:D2}";
+
+        if (dayNightWheel != null)
         {
-            GameManager.Instance.OnDayNightCycleUpdated -= OnDayNightCycleHandler;
+            float targetZ = CalculateTargetZ(hours, minutes);
+
+            if (rotationCoroutine != null) StopCoroutine(rotationCoroutine);
+            rotationCoroutine = StartCoroutine(SmoothRotate(targetZ));
         }
     }
-
-    private void OnDayNightCycleHandler(int hours, int minutes, float normalizedTime)
+    private IEnumerator SmoothRotate(float targetZ)
     {
-        clockText.text = $"{hours:D2}:{minutes:D2}";
+        Quaternion startRot = dayNightWheel.rotation;
+        Quaternion endRot = Quaternion.Euler(0, 0, targetZ);
+        float time = 0;
+
+        while (time < 1f)
+        {
+            // zaman durduðunda, timeScale 0 olduðunda bu döngü de Time.deltaTime sayesinde donar
+            time += Time.deltaTime / rotationDuration;
+            dayNightWheel.rotation = Quaternion.Lerp(startRot, endRot, time);
+            yield return null;
+        }
+        dayNightWheel.rotation = endRot;
+    }
+    private float CalculateTargetZ(int hours, int minutes)
+    {
+        float currentTime = hours + (minutes / 60f);
+        float startHour = 6f;
+        float elapsed = (currentTime >= startHour) ? (currentTime - startHour) : (24f - startHour + currentTime);
+        return -(elapsed / 20f) * 360f;
     }
 }

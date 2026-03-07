@@ -6,6 +6,12 @@ using UnityEngine.InputSystem;
 
 public class PlayerMovementController : MonoBehaviour
 {
+    #region Performance Optimizations (Hash Variables)
+    private static readonly int MoveXHash = Animator.StringToHash("moveX");
+    private static readonly int MoveYHash = Animator.StringToHash("moveY");
+    private static readonly int IsMovingHash = Animator.StringToHash("isMoving");
+    #endregion
+
     #region Variables
     [SerializeField] private Rigidbody2D rb2D;
     [SerializeField] private Animator animator;
@@ -13,7 +19,7 @@ public class PlayerMovementController : MonoBehaviour
 
     [SerializeField] private float dashDistance = 3f;
     [SerializeField] private float dashDuration = 0.1f;
-    [SerializeField] private byte _dashCooldown = 1;
+    [SerializeField] private float _dashCooldown = 1f;
     [SerializeField] private float _distanceBetweenImages = 0.1f;
 
     [Header("Input Settings")]
@@ -27,8 +33,10 @@ public class PlayerMovementController : MonoBehaviour
     //[SerializeField] private ParticleSystem dirtParticle;
 
     private Vector2 input;
+    private Vector2 _lastInput;
     private bool _isDashing = false;
     private bool _canDash = true;
+    private float _dashTimer = 0f;
     private bool _isMoving = false;
     private float _lastImagePosX;
     public float dashEnergyCost = 10;
@@ -57,27 +65,39 @@ public class PlayerMovementController : MonoBehaviour
         }
 
         _isMoving = input != Vector2.zero;
-        animator.SetBool("isMoving", _isMoving);
 
-        if (_isMoving)
+        if (input != _lastInput)
         {
-            if (input.x != animator.GetFloat("moveX") || input.y != animator.GetFloat("moveY"))
+            animator.SetBool(IsMovingHash, _isMoving);
+
+            if (_isMoving)
             {
-                animator.SetFloat("moveX", input.x);
-                animator.SetFloat("moveY", input.y);
+                animator.SetFloat(MoveXHash, input.x);
+                animator.SetFloat(MoveYHash, input.y);
             }
+            _lastInput = input;
         }
 
+        if (!_canDash)
+        {
+            _dashTimer -= Time.deltaTime;
+            if (_dashTimer <= 0) _canDash = true;
+        }
+
+        HandleDashInput();
+    }
+    private void HandleDashInput()
+    {
         if (dashAction != null && dashAction.action.WasPressedThisFrame() && !_isDashing && _canDash && input != Vector2.zero)
         {
-            if (healthSystem.currentEnergy >= dashEnergyCost)
+            if (PlayerDataManager.Instance.currentEnergy >= (int)dashEnergyCost)
             {
                 _dashRequested = true;
                 _dashDirection = input.normalized;
             }
             else
             {
-                Debug.Log("Yeterli enerji yok, dash yapýlamaz.");
+                Debug.Log("Yeterli enerji yok.");
             }
         }
     }
@@ -107,9 +127,10 @@ public class PlayerMovementController : MonoBehaviour
         _isDashing = true;
         _canDash = false;
         _isReadyToMove = false;
+        _dashTimer = _dashCooldown;
 
-        healthSystem.SetInvulnerable(true);
-        healthSystem.currentEnergy -= dashEnergyCost;
+        healthSystem.StartTemporaryInvulnerability(dashDuration + 0.1f);
+        healthSystem.ReduceEnergy((int)dashEnergyCost);
 
         Vector2 start = rb2D.position;
         Vector2 target = start + direction * dashDistance;
@@ -134,15 +155,8 @@ public class PlayerMovementController : MonoBehaviour
             _isDashing = false;
             _isReadyToMove = true;
             healthSystem.SetInvulnerable(false);
-
-            Invoke(nameof(ResetDash), _dashCooldown);
         });
     }
-    private void ResetDash()
-    {
-        _canDash = true;
-    }
-
     public void Die()
     {
         if (!_isReadyToMove) return;

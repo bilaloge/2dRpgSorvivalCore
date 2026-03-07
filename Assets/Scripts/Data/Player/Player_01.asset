@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ca122ccbe131b6a4daf404a1fe38b3af, type: 3}
+  m_Name: Player_01
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerStats
+  baseMaxHealth: 100
+  baseMaxMana: 50
+  baseMaxEnergy: 100
+  currentMaxHealth: 100
+  currentMaxMana: 50
+  currentMaxEnergy: 100
+  modifiedMaxHealth: 0
+  modifiedArmor: 0
+  modifiedMaxMana: 0
+  modifiedMaxEnergy: 0
+  Armor: 0
+  MagicResist: 0
+  MoveSpeed: 5
+  AttackPower: 0
+  CritChance: 0
+  CritDamageMultiplier: 1.5
+  Piercing: 0
+  healthRegenRate: 1
+  manaRegenRate: 1
+  energyRegenRate: 1
+  infectionLevel: 0

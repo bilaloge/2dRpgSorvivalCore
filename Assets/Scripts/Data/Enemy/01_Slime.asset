@@ -15,7 +15,7 @@ MonoBehaviour:
   _name: Slime
   _caseNo: 1
   _speed: 1
-  _attackPower: 1
+  _attackPower: 5
   _attackSpeed: 1
   _attackRange: 0
   _maxHealth: 1

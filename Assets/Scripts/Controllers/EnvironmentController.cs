@@ -1,6 +1,9 @@
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
+using System.Collections;
+using Unity.VisualScripting;
+
 
 public class EnvironmentController : MonoBehaviour
 {
@@ -10,13 +13,16 @@ public class EnvironmentController : MonoBehaviour
     [SerializeField] private float nightExposure = 0.3f;
     [SerializeField] private float dayTemperature = 20f;
     [SerializeField] private float nightTemperature = -20f;
+    [SerializeField] private float transitionDuration = 1.0f;
 
     private ColorAdjustments colorAdjustments;
     private WhiteBalance whiteBalance;
 
-    private const int DAY_START = 4;
-    private const int DAY_END = 14;
+    private const int DAY_START = 6;
+    private const int DAY_END = 14;//akþamüstü, ikindi. kalk namaz kýl
     private const int EVENING_END = 18;
+
+    private Coroutine lightingCoroutine;
 
     private void Awake()
     {
@@ -26,57 +32,70 @@ public class EnvironmentController : MonoBehaviour
             postProcessingVolume.profile.TryGet(out whiteBalance);
         }
     }
-
-    private void Start()
+    private void OnEnable()
     {
-        if (GameManager.Instance != null)
+        if (TimeManager.Instance != null)
         {
-            GameManager.Instance.OnDayNightCycleUpdated += UpdateEnvironmentLighting;
+            TimeManager.Instance.OnTimeChanged += HandleEnvironmentUpdate;
         }
+            
     }
 
-    private void OnDestroy()
+    private void OnDisable()
     {
-        if (GameManager.Instance != null)
+        if (TimeManager.Instance != null)
         {
-            GameManager.Instance.OnDayNightCycleUpdated -= UpdateEnvironmentLighting;
+            TimeManager.Instance.OnTimeChanged -= HandleEnvironmentUpdate;
         }
     }
-
-    private void UpdateEnvironmentLighting(int hours, int minutes, float normalizedTime)
+    private void HandleEnvironmentUpdate(int hours, int minutes)
     {
         float timeOfDay = hours + minutes / 60f;
-        float exposure = 0f;
-        float temperature = 0f;
+        CalculateTargetValues(timeOfDay, out float targetExp, out float targetTemp);
 
-        if (timeOfDay >= DAY_START && timeOfDay < DAY_END)
+        if (lightingCoroutine != null) StopCoroutine(lightingCoroutine);
+        lightingCoroutine = StartCoroutine(SmoothTransition(targetExp, targetTemp));
+    }
+    private void CalculateTargetValues(float time, out float exposure, out float temp)
+    {
+        if (time >= DAY_START && time < DAY_END)
         {
             exposure = dayExposure;
-            temperature = dayTemperature;
+            temp = dayTemperature;
         }
-        else if (timeOfDay >= DAY_END && timeOfDay < EVENING_END)
+        else if (time >= DAY_END && time < EVENING_END)
         {
-            float eveningProgress = (timeOfDay - DAY_END) / (EVENING_END - DAY_END);
-            exposure = Mathf.Lerp(dayExposure, nightExposure, eveningProgress);
-            temperature = Mathf.Lerp(dayTemperature, nightTemperature, eveningProgress);
+            float progress = (time - DAY_END) / (EVENING_END - DAY_END);
+            exposure = Mathf.Lerp(dayExposure, nightExposure, progress);
+            temp = Mathf.Lerp(dayTemperature, nightTemperature, progress);//Lerp ile geçiþler þak diye deðil yumuþak bir þekilde olur. daha hoþ gözükür 
         }
         else
         {
             exposure = nightExposure;
-            temperature = nightTemperature;
+            temp = nightTemperature;
 
-            if (timeOfDay < DAY_START)
+            if (time < DAY_START && time >= 0) // Gece yarýsýndan sonra
             {
-                float dawnProgress = timeOfDay / DAY_START;
+                float dawnProgress = time / DAY_START;
                 exposure = Mathf.Lerp(nightExposure, dayExposure, dawnProgress);
-                temperature = Mathf.Lerp(nightTemperature, dayTemperature, dawnProgress);
+                temp = Mathf.Lerp(nightTemperature, dayTemperature, dawnProgress);
             }
         }
+    }
+    private IEnumerator SmoothTransition(float targetExp, float targetTemp)
+    {
+        if (colorAdjustments == null || whiteBalance == null) yield break;
 
-        if (colorAdjustments != null)
-            colorAdjustments.postExposure.value = exposure;
+        float startExp = colorAdjustments.postExposure.value;
+        float startTemp = whiteBalance.temperature.value;
+        float elapsed = 0;
 
-        if (whiteBalance != null)
-            whiteBalance.temperature.value = temperature;
+        while (elapsed < 1f)
+        {
+            elapsed += Time.deltaTime / transitionDuration;
+            colorAdjustments.postExposure.value = Mathf.Lerp(startExp, targetExp, elapsed);
+            whiteBalance.temperature.value = Mathf.Lerp(startTemp, targetTemp, elapsed);
+            yield return null;
+        }
     }
 }
