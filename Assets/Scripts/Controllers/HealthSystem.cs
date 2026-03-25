@@ -4,24 +4,33 @@ using System.Collections;
 
 public class HealthSystem : MonoBehaviour
 {
+    public static HealthSystem Instance { get; private set; }
+
     [SerializeField] private PlayerStats playerStats;
     [SerializeField] private CombatRules combatRules; // Kural Kitabı
     [SerializeField] private PlayerMovementController playerMovementController;
 
-    public bool isInvulnerable;
-    [SerializeField] private float damageGracePeriod = 0.5f;
-
-    private float _hpAccumulator;
-    private float _manaAccumulator;
-    private float _energyAccumulator;
+    [Header("Savaş Ayarları")]
+    public float damageGracePeriod = 1f; // Hasar aldıktan sonraki kısa ölümsüzlük süresi
+    private bool isInvulnerable = false;
     private Coroutine _invulnCoroutine;
 
-
-    // Olaylar (UI ve diğer sistemlerle bağlantı için)
+    //UI Eventleri (current, max)
     public event Action<int, int> OnHealthChanged;
     public event Action<int, int> OnManaChanged;
     public event Action<int, int> OnEnergyChanged;
+    public event Action OnPlayerDied;
 
+    // Yenilenme (Regeneration) için zamanlayıcılar
+    private float _hpAccumulator;
+    private float _manaAccumulator;
+    private float _energyAccumulator;
+    private void Awake()
+    {
+        // EKLENDİ: Instance ataması
+        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
+        Instance = this;
+    }
     private void Start()
     {
         NotifyAll();
@@ -31,6 +40,45 @@ public class HealthSystem : MonoBehaviour
         if (GameManager.Instance.CurrentState == GameState.Playing)
         {
             RegenerateStats();
+        }
+    }
+    //SAVAŞ VE HASAR SİSTEMİ
+    public void TakeDamage(float baseDamage)
+    {
+        if (isInvulnerable) return;
+
+        int finalDamage = combatRules.CalculateDamage(baseDamage, playerStats.TotalArmor);
+
+        var data = PlayerDataManager.Instance;
+        data.currentHealth = Mathf.Max(0, data.currentHealth - finalDamage);
+
+        _hpAccumulator = 0;// Hasar alınca regen duruyor
+        NotifyHealthChange();
+
+        Debug.Log($"Damage: {baseDamage} → Final: {finalDamage}");
+
+        StartTemporaryInvulnerability(damageGracePeriod);
+
+        if (data.currentHealth <= 0)
+        {
+            playerMovementController.Die();
+            OnPlayerDied?.Invoke();
+        }
+    }
+    public void TakeEffectDamage(int amount)//zırhtan bağımsız zehir hasarı, aynı zamanda ölümsüzlük süresini de tetiklemez.
+    {
+        var data = PlayerDataManager.Instance;
+        data.currentHealth = Mathf.Max(0, data.currentHealth - amount);
+
+        _hpAccumulator = 0; // Zehir can yenilenmesini durdurur
+        NotifyHealthChange();
+
+        Debug.Log($"Efekt Hasarı (Zehir): {amount}. Kalan Can: {data.currentHealth}");
+
+        if (data.currentHealth <= 0)
+        {
+            playerMovementController.Die();
+            OnPlayerDied?.Invoke();
         }
     }
     public void StartTemporaryInvulnerability(float duration)
@@ -45,66 +93,6 @@ public class HealthSystem : MonoBehaviour
         isInvulnerable = false;
         _invulnCoroutine = null;
     }
-    public void TakeDamage(float baseDamage)
-    {
-        if (isInvulnerable) return;
-
-        int finalDamage = combatRules.CalculateDamage(baseDamage, playerStats.TotalArmor);
-        PlayerDataManager.Instance.currentHealth = Mathf.Max(0, PlayerDataManager.Instance.currentHealth - finalDamage);
-
-        _hpAccumulator = 0;
-        NotifyHealthChange();
-
-        Debug.Log($"Damage: {baseDamage} → Final: {finalDamage}");
-
-        StartTemporaryInvulnerability(damageGracePeriod);
-
-        if (PlayerDataManager.Instance.currentHealth <= 0)
-            playerMovementController.Die();
-    }
-    private void RegenerateStats()
-    {
-        var data = PlayerDataManager.Instance;
-
-        if (data.currentHealth < playerStats.TotalMaxHealth)
-        {
-            _hpAccumulator += playerStats.healthRegenRate * Time.deltaTime;
-
-            if (_hpAccumulator >= 1f)
-            {
-                int gain = Mathf.FloorToInt(_hpAccumulator);
-                data.currentHealth = Mathf.Min(data.currentHealth + gain, playerStats.TotalMaxHealth);
-                _hpAccumulator -= gain; // Kalan küsüratı bir sonraki kareye aktar
-                NotifyHealthChange();
-            }
-        }
-
-        if (data.currentMana < playerStats.currentMaxMana)
-        {
-            _manaAccumulator += playerStats.manaRegenRate * Time.deltaTime;
-
-            if (_manaAccumulator >= 1f)
-            {
-                int gain = Mathf.FloorToInt(_manaAccumulator);
-                data.currentMana = Mathf.Min(data.currentMana + gain, playerStats.TotalMaxMana);
-                _manaAccumulator -= gain;
-                NotifyManaChange();
-            }
-        }
-
-        if (data.currentEnergy < playerStats.TotalMaxHealth)
-        {
-            _energyAccumulator += playerStats.energyRegenRate * Time.deltaTime;
-
-            if (_energyAccumulator >= 1f)
-            {
-                int gain = Mathf.FloorToInt(_energyAccumulator);
-                data.currentEnergy = Mathf.Min(data.currentEnergy + gain, playerStats.TotalMaxEnergy);
-                _energyAccumulator -= gain;
-                NotifyEnergyChange();
-            }
-        }
-    }
     public void SetInvulnerable(bool value)
     {
         // Eğer bir Coroutine çalışıyorsa ve biz manuel 'false' çekiyorsak, çakışma olmaması için Coroutine'i durduruyoruz.
@@ -115,19 +103,80 @@ public class HealthSystem : MonoBehaviour
         }
         isInvulnerable = value;
     }
+    private void RegenerateStats()
+    {
+        var data = PlayerDataManager.Instance;
+
+        if (data.currentHealth < playerStats.TotalMaxHealth)
+        {
+            _hpAccumulator += playerStats.healthRegenRate * Time.deltaTime;
+            if (_hpAccumulator >= 1f)
+            {
+                int gain = Mathf.FloorToInt(_hpAccumulator);
+                data.currentHealth = Mathf.Min(data.currentHealth + gain, playerStats.TotalMaxHealth);
+                _hpAccumulator -= gain;
+                NotifyHealthChange();
+            }
+        }
+        if (data.currentMana < playerStats.TotalMaxMana)
+        {
+            _manaAccumulator += playerStats.manaRegenRate * Time.deltaTime;
+            if (_manaAccumulator >= 1f)
+            {
+                int gain = Mathf.FloorToInt(_manaAccumulator);
+                data.currentMana = Mathf.Min(data.currentMana + gain, playerStats.TotalMaxMana);
+                _manaAccumulator -= gain;
+                NotifyManaChange();
+            }
+        }
+        if (data.currentEnergy < playerStats.TotalMaxEnergy)
+        {
+            _energyAccumulator += playerStats.energyRegenRate * Time.deltaTime;
+            if (_energyAccumulator >= 1f)
+            {
+                int gain = Mathf.FloorToInt(_energyAccumulator);
+                data.currentEnergy = Mathf.Min(data.currentEnergy + gain, playerStats.TotalMaxEnergy);
+                _energyAccumulator -= gain;
+                NotifyEnergyChange();
+            }
+        }
+    }
     // Can yenileme, potion vs
     public void Heal(int amount)
     {
         var data = PlayerDataManager.Instance;
         data.currentHealth = Mathf.Clamp(data.currentHealth + amount, 0, playerStats.TotalMaxHealth);
-
-        // Can değiştiği için UI'ı bilgilendiriyoruz.
         NotifyHealthChange();
     }
     public void ReduceEnergy(int amount)
     {
-        PlayerDataManager.Instance.currentEnergy = Mathf.Max(0, PlayerDataManager.Instance.currentEnergy - amount);
+        var data = PlayerDataManager.Instance;
+        data.currentEnergy = Mathf.Max(0, data.currentEnergy - amount);
         NotifyEnergyChange();
+    }
+    //GÜN SONU / UYKU SİSTEMİ
+    public void SleepAndRestore(bool sleptInBed)
+    {
+        if (BuffManager.Instance != null)
+        {
+            BuffManager.Instance.ClearAllBuffs();
+        }
+
+        var data = PlayerDataManager.Instance;
+
+        data.currentHealth = playerStats.TotalMaxHealth;
+        data.currentMana = playerStats.TotalMaxMana;
+
+        //Enfeksiyonun yayılma Mekaniği
+        if (playerStats.infectionLevel >= 1)
+        {
+            playerStats.infectionLevel++;
+            Debug.Log($"Enfeksiyon yayıldı. Seviye: {playerStats.infectionLevel}");
+        }
+
+        NotifyAll();
+
+        Debug.Log(sleptInBed ? "Yatakta güvenle uyanıldı." : "Dışarıda sızıp kalındı, gün bitti.");
     }
 
     // Health değerini UI'ya bildir
@@ -144,13 +193,6 @@ public class HealthSystem : MonoBehaviour
     {
         OnEnergyChanged?.Invoke(PlayerDataManager.Instance.currentEnergy, playerStats.TotalMaxEnergy);
     }
-    //Gelecekte buff uygulamaları için ai önerisi
-    //private System.Collections.IEnumerator TemporaryBuffCoroutine(float extraArmor, float duration)
-    //{
-    //    playerStats.Armor += extraArmor;
-    //    yield return new WaitForSeconds(duration);
-    //    playerStats.Armor -= extraArmor;
-    //}
     public void NotifyAll()
     {
         NotifyHealthChange();

@@ -14,7 +14,7 @@ public class TimeManager : MonoBehaviour
     public float TotalPlayTime { get; private set; }
     public int Hour => (int)(TotalPlayTime / 3600f) % 24;
     public int Minute => (int)((TotalPlayTime % 3600f) / 60f);
-    public int CurrentDay => (int)(TotalPlayTime / 86400f) + 1;
+    public int CurrentDay => (int)((TotalPlayTime - (startHour * 3600f)) / 86400f) + 1;
 
     private int _lastMinute = -1;
     private bool _isEveningFired = false;
@@ -40,42 +40,75 @@ public class TimeManager : MonoBehaviour
         {
             _lastMinute = Minute;
             OnTimeChanged?.Invoke(Hour, Minute);
-            CheckGameRules(); // Senin sildiðim kurallarýn burada!
+            CheckGameRules();
         }
     }
     private void CheckGameRules()
     {
-        if (Hour == startHour && Minute == 0)
+        // GÜN BAÞLANGICI (06:00)
+        if (Hour == startHour && Minute == 0 && _isDayEndFired)
         {
-            _isEveningFired = false; // Yeni gün için reset
-            _isDayEndFired = false;
+            ResetDayFlags();
             OnDayStarted?.Invoke();
-            Debug.Log("Gün Baþladý! Günaydýn.");
         }
+
+        // AKÞAM BAÞLANGICI (18:00)
         if (Hour == eveningHour && !_isEveningFired)
         {
             _isEveningFired = true;
             OnNightStarted?.Invoke();
-            Debug.Log("Akþam oldu, ýþýklar deðiþsin.");
         }
+
+        // BAYILMA / GÜN BÝTÝÞÝ (02:00)
         if (Hour == endHour && !_isDayEndFired)
         {
             _isDayEndFired = true;
             OnDayEnded?.Invoke();
-            Debug.Log("Saat 02:00! Oyuncu bayýldý veya gün bitti.");
+
+            // KRÝTÝK: GameDataManager'ý tetikle (Sýzma senaryosu)
+            // Oyuncu yataða gitmediði için false gönderiyoruz.
+            if (GameDataManager.Instance != null)
+                GameDataManager.Instance.EndDayAndSave(false, Vector3.zero);
+
+            // Günü otomatik olarak bir sonraki sabaha atlat
+            SkipToNextDay();
         }
     }
     // Yeni güne atlama metodu (Yatakta uyunca çaðrýlýr)
     public void SkipToNextDay()
     {
-        // Toplam süreyi bir sonraki günün startHour'ýna yuvarla
         float secondsInDay = 86400f;
-        float nextDayStart = (CurrentDay) * secondsInDay + (startHour * 3600f);
+        // Mevcut günün baþlangýcýný bul ve üzerine 1 gün + startHour ekle
+        float currentDayStart = (CurrentDay - 1) * secondsInDay;
+        float nextDayStart = currentDayStart + secondsInDay + (startHour * 3600f);
+
+        if (TotalPlayTime >= nextDayStart)
+            nextDayStart += secondsInDay;
+
         TotalPlayTime = nextDayStart;
 
-        _isEveningFired = false;
-        _isDayEndFired = false;
+        ResetDayFlags();
+        _lastMinute = -1;
 
         OnDayStarted?.Invoke();
+
+        Debug.Log($"Yeni güne geçildi: Gün {CurrentDay}, Saat {Hour:00}:{Minute:00}");
+    }
+    private void ResetDayFlags()
+    {
+        _isEveningFired = false;
+        _isDayEndFired = false;
+    }
+    public float GetActiveDayPercentage()
+    {
+        float startSec = startHour * 3600f;
+        float endSec = (24 + endHour) * 3600f;
+
+        float currentSec = (TotalPlayTime % 86400f);
+        // Eðer gece yarýsýndan sonraysak (00:00 - 02:00), bunu 24:00+ olarak hesapla
+        if (currentSec < startSec) currentSec += 86400f;
+
+        float percentage = (currentSec - startSec) / (endSec - startSec);
+        return Mathf.Clamp01(percentage);
     }
 }

@@ -37,8 +37,10 @@ public class ClockUIController : MonoBehaviour
     }
     private IEnumerator SmoothRotate(float targetZ)
     {
+        // KULLANDIÐIM ASSET YAMUK OLDUÐU ÝÇÝN -90 DERECE DÖNDÜRDÜM. BAÞKA ASSET KOYUNCA BUNU DÜZELT!!!!!
+        float finalTargetZ = targetZ - 90f;
         Quaternion startRot = dayNightWheel.rotation;
-        Quaternion endRot = Quaternion.Euler(0, 0, targetZ);
+        Quaternion endRot = Quaternion.Euler(0, 0, finalTargetZ);
         float time = 0;
 
         while (time < 1f)

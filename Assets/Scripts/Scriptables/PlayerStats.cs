@@ -3,33 +3,23 @@ using UnityEngine;
 [CreateAssetMenu(fileName = "NewPlayerStats", menuName = "PlayerStats/Stats")]
 public class PlayerStats : ScriptableObject
 {
-    [Header("Base Stats (Level 1)")]
+    [Header("Kalýcý Statlar (Kayýt Dosyasýna Yazýlacaklar)")]
     public int baseMaxHealth = 100;
     public int baseMaxMana = 50;
     public int baseMaxEnergy = 100;
 
-    [Header("Current Limits (Upgraded)")]
-    // Bunlar seviye aldýkça artacak olan "tavan" deðerler
-    public int currentMaxHealth = 100;
-    public int currentMaxMana = 50;
-    public int currentMaxEnergy = 100;
+    [Header("Seviye atlanýnca artacak miktar)")]
+    public int currentMaxHealth = 10;
+    public int currentMaxMana = 10;
+    public int currentMaxEnergy = 10;
 
-    [Header("Temporary/Equipment Modifiers")]
-    // Pot içince veya zýrh giyince burayý artýracaðýz
-    [HideInInspector] public int modifiedMaxHealth;
-    [HideInInspector] public int modifiedArmor;
-    [HideInInspector] public int modifiedMaxMana;
-    [HideInInspector] public int modifiedMaxEnergy;
-    
-    public int TotalMaxHealth => baseMaxHealth + modifiedMaxHealth;
-    public int TotalArmor => Armor + modifiedArmor;
-    public int TotalMaxMana => baseMaxMana + modifiedMaxMana;
-    public int TotalMaxEnergy => baseMaxEnergy + modifiedMaxEnergy;
+    public int infectionLevel;
 
-    [Header("Deffence Stats")]
-    public int Armor;
-    public int MagicResist;
-    
+    [Header("Defense Stats (Base)")]
+    public int baseArmor;
+    public int baseMagicResist;
+
+    [Header("Movement")]
     public float MoveSpeed = 5f;
 
     [Header("Combat Stats")]
@@ -43,11 +33,29 @@ public class PlayerStats : ScriptableObject
     public sbyte manaRegenRate = 1;
     public sbyte energyRegenRate = 1;
 
-    [Header("Infection System")]
-    public int infectionLevel;
+    [Header("Geçici Statlar: EKÝPMAN (Kayýt Edilmeyecek)")]
+    // Zýrh ve silahlardan gelen bonuslar. Karakter zýrh giydiðinde EquipmentManager burayý günceller.
+    [HideInInspector] public int equipmentMaxHealthBonus;
+    [HideInInspector] public int equipmentArmorBonus;
+    [HideInInspector] public int equipmentMaxEnergyBonus;
+    [HideInInspector] public int equipmentMaxManaBonus;
 
-    // Level atladýðýnda sýnýrlarý güncellemek için metod
-    public void UpdateMaxStats(int healthBonus, int manaBonus)
+    [Header("Geçici Statlar: POT / BUFF (Kayýt Edilmeyecek)")]
+    // Ýksirlerden veya zehirlerden gelen süreli etkiler. Uyunulduðunda sýfýrlanacak kýsým burasý.
+    [HideInInspector] public int buffMaxHealthBonus;
+    [HideInInspector] public int buffArmorBonus;
+    [HideInInspector] public int buffMaxEnergyBonus;
+    [HideInInspector] public int buffMaxManaBonus;
+
+    [Header("Toplam Hesaplamalar (Sistemler Bunlarý Okur)")]
+    // HealthSystem ve Hasar formülleri sadece bu Total deðerleri okumalýdýr.
+    public int TotalMaxHealth => currentMaxHealth + equipmentMaxHealthBonus + buffMaxHealthBonus;
+    public int TotalMaxMana => currentMaxMana + equipmentMaxManaBonus + buffMaxManaBonus;
+    public int TotalMaxEnergy => currentMaxEnergy + equipmentMaxEnergyBonus + buffMaxEnergyBonus;
+    public int TotalArmor => baseArmor + equipmentArmorBonus + buffArmorBonus;
+
+    //Kalýcý Geliþim (Level Up vb.)
+    public void AddPermanentStats(int healthBonus, int manaBonus)
     {
         currentMaxHealth += healthBonus;
         currentMaxMana += manaBonus;

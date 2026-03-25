@@ -24,3 +24,4 @@ MonoBehaviour:
   _aggroRange: 3
   _maxAggroRange: 5
   _isInfected: 1
+  _knockbackMultiplier: 1

@@ -2,7 +2,6 @@ using UnityEngine;
 using System;
 using System.Collections.Generic;
 using UnityEngine.SceneManagement;
-
 public enum GameState
 {
     MainMenu,
@@ -10,7 +9,6 @@ public enum GameState
     Paused,
     Died
 }
-
 public class GameManager : MonoBehaviour
 {
     public static GameManager Instance { get; private set; }

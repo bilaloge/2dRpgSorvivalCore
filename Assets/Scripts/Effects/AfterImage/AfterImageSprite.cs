@@ -6,47 +6,46 @@ public class AfterImageSprite : MonoBehaviour
     [SerializeField] private float maxLifetime = 2f;     // failsafe
     [SerializeField] private float initialAlpha = 0.6f;
 
-    private SpriteRenderer afterSR;
-    private Transform player;
-    private SpriteRenderer playerSR;
-
-    private Color color;
+    private SpriteRenderer sr;
     private float alpha;
-    private float timeActivated;
-
-    private void OnEnable()
+    private float lifetime;
+    private void Awake()
     {
+        sr = GetComponent<SpriteRenderer>();
+    }
+    public void SetupAfterImage(Vector3 position, Quaternion rotation, Sprite playerSprite)
+    {
+        // 1. Koordinatlarý ve yönü ayarla
+        transform.position = position;
+        transform.rotation = rotation;
 
-        if (afterSR == null)
-            afterSR = GetComponent<SpriteRenderer>();
+        // 2. Player'ýn anlýk görüntüsünü kopyala
+        sr.sprite = playerSprite;
 
-        if (player == null)
-            player = GameObject.FindGameObjectWithTag("Player").transform;
-
-        if (playerSR == null)
-            playerSR = player.GetComponent<SpriteRenderer>();
-
-        transform.position = player.position;
-        transform.rotation = player.rotation;
-        afterSR.sprite = playerSR.sprite;
-        afterSR.flipX = playerSR.flipX;
-
+        // 3. Görünürlük ve yaþam süresini sýfýrla
         alpha = initialAlpha;
-        color = new Color(1f, 1f, 1f, alpha);
-        afterSR.color = color;
-
-        timeActivated = Time.time;
-
+        lifetime = maxLifetime;
+        sr.color = new Color(sr.color.r, sr.color.g, sr.color.b, alpha);
     }
     private void Update()
     {
+        //solma
         alpha -= fadeSpeed * Time.deltaTime;
-        color.a = alpha;
-        afterSR.color = color;
+        sr.color = new Color(sr.color.r, sr.color.g, sr.color.b, alpha);
 
-        if (alpha <= 0.01f || Time.time >= timeActivated + maxLifetime)
+        lifetime -= Time.deltaTime;
+        if (lifetime <= 0f || alpha <= 0.1f)
         {
-            AfterImagePoolScript.Instance.AddToPool(gameObject);
+            // Ömrü dolduðunda havuza geri dön
+            if (AfterImagePoolScript.Instance != null)
+            {
+                AfterImagePoolScript.Instance.AddToPool(gameObject);
+            }
+            else
+            {
+                // Eðer havuz bulunamazsa (sahne geçiþi aný vb.), objeyi yok et ki birikmesin
+                Destroy(gameObject);
+            }
         }
     }
 }

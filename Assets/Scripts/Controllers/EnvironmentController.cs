@@ -1,28 +1,32 @@
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
-using System.Collections;
-using Unity.VisualScripting;
-
 
 public class EnvironmentController : MonoBehaviour
 {
     [Header("Post-Processing")]
     [SerializeField] private Volume postProcessingVolume;
-    [SerializeField] private float dayExposure = 1.2f;
+
+    [Space(10)]
+    [SerializeField] private float dayExposure = 0f;
+    [SerializeField] private float eveningExposure = 0.8f;
     [SerializeField] private float nightExposure = 0.3f;
-    [SerializeField] private float dayTemperature = 20f;
+
+    [Space(5)]
+    [SerializeField] private float dayTemperature = 0f;
+    [SerializeField] private float eveningTemperature = 50f;
     [SerializeField] private float nightTemperature = -20f;
-    [SerializeField] private float transitionDuration = 1.0f;
+
+    [SerializeField] private Color eveningTint = new Color(1f, 0.7f, 0.4f); // Ýkindi turuncusu- internetten buldum
+
+    [Range(0.1f, 10f)]
+    [SerializeField] private float lerpSpeed = 2f;//0 la 10 arasý bir rakam. renk deðiþimlerinin geçiþ hýzýný ayarlýyor
 
     private ColorAdjustments colorAdjustments;
     private WhiteBalance whiteBalance;
 
-    private const int DAY_START = 6;
-    private const int DAY_END = 14;//akþamüstü, ikindi. kalk namaz kýl
-    private const int EVENING_END = 18;
-
-    private Coroutine lightingCoroutine;
+    private const float DAY_END = 0.6f;     //Ýkindi baþlangýcý 16:00-17 arasý
+    private const float EVENING_END = 0.85f; // gece baþlangýcý  21:00
 
     private void Awake()
     {
@@ -32,70 +36,40 @@ public class EnvironmentController : MonoBehaviour
             postProcessingVolume.profile.TryGet(out whiteBalance);
         }
     }
-    private void OnEnable()
+    private void Update()
     {
-        if (TimeManager.Instance != null)
-        {
-            TimeManager.Instance.OnTimeChanged += HandleEnvironmentUpdate;
-        }
-            
-    }
+        if (TimeManager.Instance == null || colorAdjustments == null || whiteBalance == null) return;
 
-    private void OnDisable()
-    {
-        if (TimeManager.Instance != null)
-        {
-            TimeManager.Instance.OnTimeChanged -= HandleEnvironmentUpdate;
-        }
-    }
-    private void HandleEnvironmentUpdate(int hours, int minutes)
-    {
-        float timeOfDay = hours + minutes / 60f;
-        CalculateTargetValues(timeOfDay, out float targetExp, out float targetTemp);
+        float dayProgress = TimeManager.Instance.GetActiveDayPercentage();
 
-        if (lightingCoroutine != null) StopCoroutine(lightingCoroutine);
-        lightingCoroutine = StartCoroutine(SmoothTransition(targetExp, targetTemp));
+        CalculateTargetValues(dayProgress, out float targetExp, out float targetTemp, out Color targetColor);
+
+        // Deðerleri yumuþak bir þekilde uygula Lerp ile
+        colorAdjustments.postExposure.value = Mathf.Lerp(colorAdjustments.postExposure.value, targetExp, Time.deltaTime * lerpSpeed);
+        whiteBalance.temperature.value = Mathf.Lerp(whiteBalance.temperature.value, targetTemp, Time.deltaTime * lerpSpeed);
+        colorAdjustments.colorFilter.value = Color.Lerp(colorAdjustments.colorFilter.value, targetColor, Time.deltaTime * lerpSpeed);
     }
-    private void CalculateTargetValues(float time, out float exposure, out float temp)
+    private void CalculateTargetValues(float progress, out float exposure, out float temp, out Color colorFilter)
     {
-        if (time >= DAY_START && time < DAY_END)
+        if (progress < DAY_END)
         {
             exposure = dayExposure;
             temp = dayTemperature;
+            colorFilter = Color.white;
         }
-        else if (time >= DAY_END && time < EVENING_END)
+        else if (progress >= DAY_END && progress < EVENING_END)
         {
-            float progress = (time - DAY_END) / (EVENING_END - DAY_END);
-            exposure = Mathf.Lerp(dayExposure, nightExposure, progress);
-            temp = Mathf.Lerp(dayTemperature, nightTemperature, progress);//Lerp ile geçiþler þak diye deðil yumuþak bir þekilde olur. daha hoþ gözükür 
+            float segmentProgress = (progress - DAY_END) / (EVENING_END - DAY_END);
+
+            exposure = Mathf.Lerp(dayExposure, eveningExposure, segmentProgress);
+            temp = Mathf.Lerp(dayTemperature, eveningTemperature, segmentProgress);
+            colorFilter = Color.Lerp(Color.white, eveningTint, segmentProgress);
         }
         else
         {
             exposure = nightExposure;
             temp = nightTemperature;
-
-            if (time < DAY_START && time >= 0) // Gece yarýsýndan sonra
-            {
-                float dawnProgress = time / DAY_START;
-                exposure = Mathf.Lerp(nightExposure, dayExposure, dawnProgress);
-                temp = Mathf.Lerp(nightTemperature, dayTemperature, dawnProgress);
-            }
-        }
-    }
-    private IEnumerator SmoothTransition(float targetExp, float targetTemp)
-    {
-        if (colorAdjustments == null || whiteBalance == null) yield break;
-
-        float startExp = colorAdjustments.postExposure.value;
-        float startTemp = whiteBalance.temperature.value;
-        float elapsed = 0;
-
-        while (elapsed < 1f)
-        {
-            elapsed += Time.deltaTime / transitionDuration;
-            colorAdjustments.postExposure.value = Mathf.Lerp(startExp, targetExp, elapsed);
-            whiteBalance.temperature.value = Mathf.Lerp(startTemp, targetTemp, elapsed);
-            yield return null;
+            colorFilter = new Color(0.6f, 0.6f, 0.9f);
         }
     }
 }

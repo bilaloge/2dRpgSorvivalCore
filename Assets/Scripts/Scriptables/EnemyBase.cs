@@ -15,5 +15,6 @@ public class EnemyBase : ScriptableObject
     [SerializeField] public float _aggroRange;
     [SerializeField] public float _maxAggroRange;//max agro range den çýkýlýnca karakter takip etmeyi býrakýr ve isaggro false olur. aggro range den biraz fazla olucak
     [SerializeField] public bool _isInfected;
+    [SerializeField] public float _knockbackMultiplier;
 
 }

@@ -6,6 +6,8 @@ using UnityEngine.InputSystem;
 
 public class PlayerMovementController : MonoBehaviour
 {
+    public static PlayerMovementController Instance { get; private set; }
+
     #region Performance Optimizations (Hash Variables)
     private static readonly int MoveXHash = Animator.StringToHash("moveX");
     private static readonly int MoveYHash = Animator.StringToHash("moveY");
@@ -16,6 +18,8 @@ public class PlayerMovementController : MonoBehaviour
     [SerializeField] private Rigidbody2D rb2D;
     [SerializeField] private Animator animator;
     [SerializeField] public bool _isReadyToMove = true;
+    [SerializeField] private SpriteRenderer sr;
+    [SerializeField] private AfterImagePoolScript afterImagePool;
 
     [SerializeField] private float dashDistance = 3f;
     [SerializeField] private float dashDuration = 0.1f;
@@ -23,7 +27,6 @@ public class PlayerMovementController : MonoBehaviour
     [SerializeField] private float _distanceBetweenImages = 0.1f;
 
     [Header("Input Settings")]
-
     [SerializeField] private InputActionReference moveAction;
     [SerializeField] private InputActionReference dashAction;
 
@@ -44,15 +47,35 @@ public class PlayerMovementController : MonoBehaviour
     private bool _dashRequested = false;
     private Vector2 _dashDirection;
     #endregion
-
+    private void Awake()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
+        else if (Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        if (afterImagePool == null)
+            afterImagePool = GetComponentInChildren<AfterImagePoolScript>();
+    }
     private void OnEnable()
     {
+        if (Instance != null && Instance != this) return;
+
+        TargetRegistry.Register(this.transform);
         if (moveAction != null) moveAction.action.Enable();
         if (dashAction != null) dashAction.action.Enable();
     }
 
     private void OnDisable()
     {
+        if (Instance != null && Instance != this) return;
+
+        TargetRegistry.Unregister(this.transform);
         if (moveAction != null) moveAction.action.Disable();
         if (dashAction != null) dashAction.action.Disable();
     }
@@ -117,10 +140,9 @@ public class PlayerMovementController : MonoBehaviour
 
     private void MovePlayer()
     {
-        rb2D.MovePosition(rb2D.position + playerStats.MoveSpeed * Time.fixedDeltaTime * input);
-        //rb2D.linearVelocity = input * _moveSpeed; bu da bi ihtimal. eðer hýza baðlý bir aksiyon istiyorsan!!!
+        //rb2D.MovePosition(rb2D.position + playerStats.MoveSpeed * Time.fixedDeltaTime * input);
+        rb2D.linearVelocity = input * playerStats.MoveSpeed;
     }
-
 
     private void Dash(Vector2 direction)
     {
@@ -141,21 +163,46 @@ public class PlayerMovementController : MonoBehaviour
             target = hit.point;
         }
 
-        AfterImagePoolScript.Instance.GetFromPool();
-        _lastImagePosX = transform.position.x;
+        // 1. Dash baþladýðý an ilk gölgeyi oluþtur
+        SpawnAfterImage();
 
-        rb2D.DOMove(target, dashDuration).SetEase(Ease.OutSine).OnComplete(() =>
-        {
-            if (Mathf.Abs(transform.position.x - _lastImagePosX) >= _distanceBetweenImages)
+        // 2. DOMove ile hareketi baþlat
+        rb2D.DOMove(target, dashDuration).SetEase(Ease.OutSine)
+            .OnUpdate(() => // BU KISIM EKLENDÝ: Hareket sürerken her karede çalýþýr
             {
-                AfterImagePoolScript.Instance.GetFromPool();
-                _lastImagePosX = transform.position.x;
-            }
+                // SADECE X deðil, tüm mesafe farkýný (Vector2) kontrol et
+                if (Vector2.Distance(rb2D.position, _lastImagePos) >= _distanceBetweenImages)
+                {
+                    SpawnAfterImage();
+                }
+            })
+            .OnComplete(() =>
+            {
+                _isDashing = false;
+                _isReadyToMove = true;
+                healthSystem.SetInvulnerable(false);
+            });
+    }
 
-            _isDashing = false;
-            _isReadyToMove = true;
-            healthSystem.SetInvulnerable(false);
-        });
+    // Kod tekrarýný önlemek için yardýmcý metod
+    private Vector2 _lastImagePos; // float yerine Vector2 yaptýk
+    private void SpawnAfterImage()
+    {
+        if (afterImagePool == null)
+        {
+            afterImagePool = AfterImagePoolScript.Instance;
+            if (afterImagePool == null) return; // Yine de yoksa hata verme, sadece çalýþma
+        }
+        GameObject shadow = afterImagePool.GetFromPool();
+        if (shadow != null)
+        {
+            AfterImageSprite shadowScript = shadow.GetComponent<AfterImageSprite>();
+            if (shadowScript != null)
+            {
+                shadowScript.SetupAfterImage(transform.position, transform.rotation, sr.sprite);
+            }
+        }
+        _lastImagePos = rb2D.position;
     }
     public void Die()
     {
@@ -164,6 +211,17 @@ public class PlayerMovementController : MonoBehaviour
         _isReadyToMove = false;
         animator.Play("Death");
         //play death animation, game over screen, vs.
+    }
+    private void OnDestroy()
+    {
+        if (Instance == this)
+        {
+            TargetRegistry.Unregister(this.transform);
+        }
+    }
+    public void ResetLastImagePosition()
+    {
+        _lastImagePos = rb2D.position;
     }
 
     //private void OnCollisionEnter(Collision collision) !!!!!güzel ayak altý toz bulutu çýkarma bulursam
