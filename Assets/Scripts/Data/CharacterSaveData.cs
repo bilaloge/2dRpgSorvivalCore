@@ -44,4 +44,7 @@ public class CharacterSaveData
     [UnityEngine.Header("Envanter")]
     public List<string> inventoryItemIDs = new List<string>();
     public List<int> inventoryItemAmounts = new List<int>();
+
+    public string lastSceneName; // Örn: "StartZone"
+    public string lastSpawnID; // Örn: "Home_Bed_Spawn"
 }

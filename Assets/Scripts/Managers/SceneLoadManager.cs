@@ -58,17 +58,20 @@ public class SceneLoadManager : MonoBehaviour
             {
                 PlayerMovementController.Instance.transform.position = targetPoint.position;
                 PlayerMovementController.Instance.ResetLastImagePosition();
-
-                var vCam = FindFirstObjectByType<Unity.Cinemachine.CinemachineCamera>();
-                if (vCam != null)
-                {
-                    vCam.Follow = PlayerMovementController.Instance.transform;
-                    // Kameranýn ýþýnlanan karakteri ararken ekraný "kaydýrmasýný" engellemek için:
-                    vCam.ForceCameraPosition(targetPoint.position, Quaternion.identity);
-                }
-                // Ýþlem bitti, hedefi temizle
-                targetSpawnID = null;
             }
+        }
+        // 2. Kamerayý Baðla (ID olsun ya da olmasýn, karakter varsa kamera takip etmeli)
+        AssignCameraToPlayer();
+        // ID'yi temizle ki bir sonraki geçiþ temiz olsun
+        targetSpawnID = null;
+    }
+    private void AssignCameraToPlayer()
+    {
+        var vCam = FindFirstObjectByType<Unity.Cinemachine.CinemachineCamera>();
+        if (vCam != null && PlayerMovementController.Instance != null)
+        {
+            vCam.Follow = PlayerMovementController.Instance.transform;
+            vCam.ForceCameraPosition(PlayerMovementController.Instance.transform.position, Quaternion.identity);
         }
     }
 }

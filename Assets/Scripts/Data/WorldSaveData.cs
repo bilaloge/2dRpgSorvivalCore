@@ -23,11 +23,9 @@ public class PlacedObjectSaveData
 public class WorldSaveData
 {
     public string worldName;
+    public bool isNewWorld = true; // Sadece ilk giriþi kontrol eder
     public int currentDay;
     public int difficultyLevel;
-
-    [Header("Konum Bilgisi")]
-    public Vector3 lastBedPosition;
 
     [Header("Dünya Geliþimi (Binalar)")]
     public List<BuildingSaveData> upgradedBuildings = new List<BuildingSaveData>();

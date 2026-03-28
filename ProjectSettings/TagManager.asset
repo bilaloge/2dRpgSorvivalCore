@@ -47,11 +47,20 @@ TagManager:
   - name: Obstacle
     uniqueID: 2735780639
     locked: 0
+  - name: Passable Decorations
+    uniqueID: 2071574909
+    locked: 0
+  - name: Obstacle Decorations
+    uniqueID: 2143583021
+    locked: 0
   - name: Enemy
     uniqueID: 1527071343
     locked: 0
   - name: Player
     uniqueID: 3510450557
+    locked: 0
+  - name: OverPlayer
+    uniqueID: 104842121
     locked: 0
   m_RenderingLayers:
   - Default

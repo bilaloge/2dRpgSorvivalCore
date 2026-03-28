@@ -27,13 +27,22 @@ public class HealthSystem : MonoBehaviour
     private float _energyAccumulator;
     private void Awake()
     {
-        // EKLENDİ: Instance ataması
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
     }
     private void Start()
     {
         NotifyAll();
+        if (GameManager.Instance != null)
+        {
+            // movementController ve playerStats zaten yukarıda [SerializeField] olarak tanımlıydı.
+            // Eğer tanımlı değilse GetComponent ile de alabilirsin.
+            GameManager.Instance.RegisterPlayer(playerMovementController, this, playerStats);
+        }
+        else
+        {
+            Debug.LogWarning("Sahnede GameManager bulunamadı! Karakter sisteme kaydedilemedi.");
+        }
     }
     private void Update()
     {

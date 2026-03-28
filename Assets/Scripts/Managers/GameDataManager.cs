@@ -6,15 +6,12 @@ public class GameDataManager : MonoBehaviour
 {
     public static GameDataManager Instance { get; private set; }
 
-    [SerializeField] private HealthSystem healthSystem;
-    [SerializeField] private Transform playerTransform;
-
+    [Header("World Data (Runtime)")]
     private WorldSaveData _worldData = new WorldSaveData();
     private string _worldSavePath;
+    private List<PlacedObjectSaveData> _temporaryPlacedObjects = new List<PlacedObjectSaveData>();
 
     public int currentDifficulty { get; private set; }
-
-    private List<PlacedObjectSaveData> _temporaryPlacedObjects = new List<PlacedObjectSaveData>();
     private void Awake()
     {
         if (Instance != null && Instance != this)
@@ -27,20 +24,21 @@ public class GameDataManager : MonoBehaviour
 
         _worldSavePath = Path.Combine(Application.persistentDataPath, "World_Main.json");
     }
-    public void EndDayAndSave(bool sleptInBed, Vector3 bedPosition)
+    public void EndDayAndSave(bool sleptInBed)
     {
         _worldData.currentDay++;//günü artýr
 
-        healthSystem.SleepAndRestore(sleptInBed);//statlarý yenile
-
-        if (sleptInBed)
+        if(sleptInBed)
         {
-            _worldData.lastBedPosition = bedPosition;
+            PlayerDataManager.Instance.currentHealth = GameManager.Instance.PlayerStats.TotalMaxHealth;
+            PlayerDataManager.Instance.currentEnergy = GameManager.Instance.PlayerStats.TotalMaxEnergy;
         }
         else
         {
             ApplyPassedOutDebuffs();
         }
+
+        GameManager.Instance.HealthSystem.SleepAndRestore(sleptInBed);
 
         //DÜNYA VERÝLERÝNÝ TOPLA
         CollectWorldDynamicData();
@@ -51,30 +49,30 @@ public class GameDataManager : MonoBehaviour
         //Dünya Dosyasýný Kaydet
         SaveWorldToFile();
 
-        //Uyanýþ ve Iþýnlanma
-        HandleWakeUp();
+        string targetScene = PlayerDataManager.Instance.lastSceneName;
+        string targetID = PlayerDataManager.Instance.lastSpawnID;
+
+        SceneLoadManager.Instance.LoadNewScene(targetScene, targetID);
     }
     private void ApplyPassedOutDebuffs()//sýzma senaryosunda
     {
         // Örn: inventorydeki itemler ve kuþanýlan itemlerden rastgele 1-2 item çalýnsýn. bu itemlerin kayý tutlarak karakola gittiðinde bunlarýn geri gelmesi saðlanacak. bunun için sonra kod yazýcam
         //þu an için test amacý ile enerjý yarýda baþlat
-        PlayerDataManager.Instance.currentEnergy /= 2;
-        Debug.LogWarning("Sýzma debufflarý uygulandý ve kaydediliyor...");
-    }
-    private void HandleWakeUp()
-    {
-        if (_worldData.lastBedPosition != Vector3.zero)
-            playerTransform.position = _worldData.lastBedPosition;
-
-        healthSystem.NotifyAll(); // UI'ý tazele
+        PlayerDataManager.Instance.currentEnergy = GameManager.Instance.PlayerStats.TotalMaxEnergy/2;
+        if (string.IsNullOrEmpty(PlayerDataManager.Instance.lastSpawnID))
+        {
+            PlayerDataManager.Instance.UpdateLastLocation("StartZone", "Default");
+            Debug.Log("Hiç yatak kaydý yok, baþlangýca gönderildi.");
+        }
+        else
+        {
+            Debug.Log($"Sýzýldý. Son kayýtlý yatakta ({PlayerDataManager.Instance.lastSpawnID}) uyanýlacak.");
+        }
     }
     private void CollectWorldDynamicData()
     {
-        // Sadece 'Dirty' (deðiþmiþ) bina seviyelerini kontrol eder.
-
-        // Ekinler, kaynaklar ve hava durumu tamamen "Gün Sayýsý" ve "Seed" üzerinden matematiksel olarak hesaplandýðý için burada ek bir tarama yapmýyoruz.
-
-        Debug.Log("Sistem: Gün bazlý veriler (Ekinler/Binalar) senkronize edildi.");
+        // Bina seviyeleri ve zindan durumlarý buraya iþlenecek
+        Debug.Log("Sistem: Dinamik dünya verileri toplandý.");
     }
     public void RegisterPlacedObject(string id, Vector3 pos, string data = "")//BURADA OTLAR SANDIKLAR FLN ÝÞLENÝR
     {
@@ -106,32 +104,44 @@ public class GameDataManager : MonoBehaviour
         _worldData.worldName = worldName;
         _worldData.currentDay = 1;
         _worldData.difficultyLevel = difficulty;
-        _worldData.lastBedPosition = Vector3.zero;
-
-        currentDifficulty = difficulty;
+        _worldData.isNewWorld = true; // Karakterin sahilde doðmasýný tetikler
 
         SaveWorldToFile();
+        PlayerDataManager.Instance.ResetToDefaultStats();
         Debug.Log($"{worldName} adýnda yeni bir evren yaratýldý.");
     }
     public void LoadWorld()
     {
-        if (File.Exists(_worldSavePath))
+        if (!File.Exists(_worldSavePath)) return;
+        string json = File.ReadAllText(_worldSavePath);
+        _worldData = JsonUtility.FromJson<WorldSaveData>(json);
+        currentDifficulty = _worldData.difficultyLevel;
+        _temporaryPlacedObjects = new List<PlacedObjectSaveData>(_worldData.placedObjects);
+    }
+    public void ContinueLatestGame()
+    {
+        LoadWorld();
+        PlayerDataManager.Instance.LoadCharacter();
+
+        string targetScene;
+        string targetID;
+
+        Debug.Log($"<color=green>Oyun Devam Ediyor. Mevcut Gün: {_worldData.currentDay}</color>");
+
+        if (_worldData.isNewWorld)
         {
-            string json = File.ReadAllText(_worldSavePath);
-            _worldData = JsonUtility.FromJson<WorldSaveData>(json);
+            targetScene = "StartZone";
+            targetID = "Beach_Spawn";
 
-            // jsondan gelen deðeri runtime a aktararak her seferinde json dosyasýna eriþme zorunluluðunu ortadan kaldýrýyoruz. oyun zorluðu bir çok hesaplamada kullanýlacaðý için bir çok defa çaðýrýlacak.
-            //bu yüzden runtime(ram içerisinde) hazýr bulunmasý daha mantýklý
-            currentDifficulty = _worldData.difficultyLevel;
-
-            // Geçici listeyi, diskten gelen verilerle doldur (Hibrit sistem)
-            _temporaryPlacedObjects = new List<PlacedObjectSaveData>(_worldData.placedObjects);
-
-            Debug.Log($"Dünya yüklendi. Gün: {_worldData.currentDay}, Zorluk: {currentDifficulty}");
+            _worldData.isNewWorld = false;
+            SaveWorldToFile();
         }
         else
         {
-            Debug.LogError("Dünya dosyasý bulunamadý!");
+            targetScene = PlayerDataManager.Instance.lastSceneName;
+            targetID = PlayerDataManager.Instance.lastSpawnID;
         }
+
+        SceneLoadManager.Instance.LoadNewScene(targetScene, targetID);  
     }
 }

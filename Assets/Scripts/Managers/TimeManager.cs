@@ -68,7 +68,7 @@ public class TimeManager : MonoBehaviour
             // KRÝTÝK: GameDataManager'ý tetikle (Sýzma senaryosu)
             // Oyuncu yataða gitmediði için false gönderiyoruz.
             if (GameDataManager.Instance != null)
-                GameDataManager.Instance.EndDayAndSave(false, Vector3.zero);
+                GameDataManager.Instance.EndDayAndSave(false);
 
             // Günü otomatik olarak bir sonraki sabaha atlat
             SkipToNextDay();

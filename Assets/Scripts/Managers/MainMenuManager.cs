@@ -3,7 +3,7 @@ using UnityEngine.UI;
 using System.Collections;
 using TMPro;
 using UnityEngine.SceneManagement;
-using System;
+using System.IO;
 public class MainMenuManager : MonoBehaviour
 {
     [Header("Core Panels")]
@@ -64,7 +64,7 @@ public class MainMenuManager : MonoBehaviour
         LoadGame.onClick.AddListener(() => TransitionToPanel(loadGamePanel));
         Settings.onClick.AddListener(() => TransitionToPanel(settingsPanel));
         Exit.onClick.AddListener(QuitGame);
-        Continue.onClick.AddListener(ContinueLatestGame);
+        Continue.onClick.AddListener(OnContinueButtonClicked);
 
         BackToMainMenuBttn.onClick.AddListener(BackToMainMenu);
 
@@ -77,13 +77,15 @@ public class MainMenuManager : MonoBehaviour
     }
     private void CheckContinueButton()
     {
-        // Þimdilik GameDataManager üzerinden bir kayýt var mý diye kontrol edeceðiz.
-        // Ýleride bu metodu GameDataManager'a baðlayýp en son oynanan dosyayý bulduracaðýz.
-        bool hasSaveData = GameDataManager.Instance != null && PlayerPrefs.HasKey("LatestSaveFile");
+        string worldPath = Path.Combine(Application.persistentDataPath, "World_Main.json");
+        string charPath = Path.Combine(Application.persistentDataPath, "Character_Hero.json");
+
+        // Eðer her iki dosya da (Dünya ve Karakter) diskte varsa kayýt vardýr.
+        bool hasSaveData = File.Exists(worldPath) && File.Exists(charPath);
 
         if (Continue != null)
         {
-            Continue.interactable = hasSaveData; // Kayýt yoksa butona týklanamaz
+            Continue.interactable = hasSaveData;
         }
     }
 
@@ -162,12 +164,9 @@ public class MainMenuManager : MonoBehaviour
         // Sahneyi yükle
         SceneManager.LoadScene(firstLevelName);
     }
-    public void ContinueLatestGame()
+    public void OnContinueButtonClicked()
     {
-        // Ýleride buraya "En son oynanan dosyayý yükle" komutu gelecek.
-        // Þimdilik sadece sahneyi yüklüyoruz.
-        Debug.Log("En son kayda devam ediliyor...");
-        SceneManager.LoadScene(firstLevelName);
+        GameDataManager.Instance.ContinueLatestGame();
     }
     private void QuitGame()
     {

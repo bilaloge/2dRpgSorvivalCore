@@ -6,22 +6,24 @@ public class PlayerDataManager : MonoBehaviour
 {
     public static PlayerDataManager Instance { get; private set; }
 
-    [Header("Anlýk Player Deðerleri")]
+    [Header("Runtime Player Stats")]
     public int currentHealth;
     public int currentMana;
     public int currentEnergy;
 
-    [Header("Referanslar")]
-    [SerializeField] private PlayerStats playerStats;
-    [SerializeField] private HealthSystem healthSystem;
+    [Header("Last Known Location")]
+    public string lastSceneName;
+    public string lastSpawnID;
 
-    [Header("Özel Silah Verileri")]
+    [Header("Runtime Weapon Stats")]
     public int customWeaponLevel = 1;
     public float currentWeaponDurability = 100f;
     public string weaponEnhancement = "None";
 
-    [Header("Sosyal Ýliþkiler")]
     public List<NpcRelationshipData> npcRelationships = new List<NpcRelationshipData>();
+
+    [Header("Referanslar")]
+    [SerializeField] private PlayerStats playerStats;
 
     private string _savePath;
 
@@ -52,43 +54,53 @@ public class PlayerDataManager : MonoBehaviour
             ResetToDefaultStats();//eðer kayýt bulunmazsa baþlangýç ayarlarý
         }
     }
+    // Yataða yatýldýðýnda çaðýracaðýmýz metod
+    public void UpdateLastLocation(string sceneName, string spawnID)
+    {
+        lastSceneName = sceneName;
+        lastSpawnID = spawnID;
+    }
     public void ResetToDefaultStats()//baþlangýç ayarlarý
     {
-        currentHealth = playerStats.TotalMaxHealth;
-        currentMana = playerStats.TotalMaxMana;
-        currentEnergy = playerStats.TotalMaxEnergy;
+        if (this.playerStats != null)
+        {
+            currentHealth = this.playerStats.TotalMaxHealth;
+            currentMana = this.playerStats.TotalMaxMana;
+            currentEnergy = this.playerStats.TotalMaxEnergy;
+        }
+
+        lastSceneName = "StartZone";
+        lastSpawnID = "Beach_Spawn";
+
+        // Geri kalan her þey (Silah seviyesi vb.) zaten statik sayýlar
         customWeaponLevel = 1;
         currentWeaponDurability = 100f;
         weaponEnhancement = "None";
-        playerStats.infectionLevel = 0;
-        healthSystem.NotifyAll();
+
+        // HealthSystem sahne yüklendiðinde oluþacaðý için null-check þart
+        GameManager.Instance?.HealthSystem?.NotifyAll();
     }
     public void SaveCharacter()
     {
-        CharacterSaveData data = new CharacterSaveData();
-
-        // Temel Statlar
-        data.currentHealth = this.currentHealth;
-        data.currentMana = this.currentMana;
-        data.currentEnergy = this.currentEnergy;
-        data.infectionLevel = playerStats.infectionLevel;
-
-        // Özel Silah
+        CharacterSaveData data = new CharacterSaveData
+        {
+            currentHealth = this.currentHealth,
+            currentMana = this.currentMana,
+            currentEnergy = this.currentEnergy,
+            lastSceneName = this.lastSceneName,
+            lastSpawnID = this.lastSpawnID,
+            infectionLevel = GameManager.Instance.PlayerStats.infectionLevel,
+            npcRelationships = new List<NpcRelationshipData>(npcRelationships)
+        };
         data.customWeapon.weaponLevel = customWeaponLevel;
         data.customWeapon.currentDurability = (int)currentWeaponDurability;
         data.customWeapon.enhancementType = weaponEnhancement;
 
-        // NPC Ýliþkileri
-        data.npcRelationships = new List<NpcRelationshipData>(npcRelationships);
-
-        string json = JsonUtility.ToJson(data, true);
-        File.WriteAllText(_savePath, json);
-        Debug.Log("Karakter Verileri Kaydedildi.");
+        File.WriteAllText(_savePath, JsonUtility.ToJson(data, true));
     }
     public void LoadCharacter()
     {
         if (!File.Exists(_savePath)) return;
-
         string json = File.ReadAllText(_savePath);
         CharacterSaveData data = JsonUtility.FromJson<CharacterSaveData>(json);
 
@@ -96,15 +108,18 @@ public class PlayerDataManager : MonoBehaviour
         this.currentMana = data.currentMana;
         this.currentEnergy = data.currentEnergy;
 
-        playerStats.infectionLevel = data.infectionLevel;
+        this.lastSceneName = data.lastSceneName;
+        this.lastSpawnID = data.lastSpawnID;
+
+        // Enfeksiyonu runtime stats'a aktar
+        if (GameManager.Instance != null && GameManager.Instance.PlayerStats != null)
+            GameManager.Instance.PlayerStats.infectionLevel = data.infectionLevel;
 
         this.customWeaponLevel = data.customWeapon.weaponLevel;
         this.currentWeaponDurability = data.customWeapon.currentDurability;
         this.weaponEnhancement = data.customWeapon.enhancementType;
-
         this.npcRelationships = data.npcRelationships;
 
-        healthSystem.NotifyAll(); // UI'ý yeni verilerle güncelle
-        Debug.Log("Karakter, Enfeksiyon ve Silah verileri baþarýyla yüklendi.");
+        GameManager.Instance?.HealthSystem?.NotifyAll();
     }
 }

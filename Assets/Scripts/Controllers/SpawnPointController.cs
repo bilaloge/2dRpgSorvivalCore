@@ -2,7 +2,7 @@ using UnityEngine;
 
 public class SpawnPointController : MonoBehaviour
 {
-    [Tooltip("BUNU KOYDUÐUN OBJENÝN ÝSMÝNÝ DEÐÝÞTÝR. KUZEY KÖY KAPISI FLN. DAHA SONRA PORTAL SC'SÝ BUNA GÖRE IÞINLIYCAK")]
+    [Tooltip("BUNU KOYDUÐUN OBJENÝN ID'sini DEÐÝÞTÝR. KUZEY KÖY KAPISI FLN. DAHA SONRA PORTAL SC'SÝ BUNA GÖRE IÞINLIYCAK")]
     [SerializeField] private string spawnID;
 
     private void OnEnable()
@@ -28,6 +28,5 @@ public class SpawnPointController : MonoBehaviour
         // Editörde noktayý yeþil bir çember olarak göster
         Gizmos.color = Color.green;
         Gizmos.DrawWireSphere(transform.position, 0.4f);
-        Gizmos.DrawLine(transform.position, transform.position + transform.up * 0.6f);
     }
 }
