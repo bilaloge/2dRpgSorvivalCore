@@ -3,10 +3,12 @@ using System;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using Zenject;
 
 public class PlayerMovementController : MonoBehaviour
 {
-    public static PlayerMovementController Instance { get; private set; }
+    [Inject] private PlayerDataManager _playerDataManager;
+    [Inject] private GameManager _gameManager;
 
     #region Performance Optimizations (Hash Variables)
     private static readonly int MoveXHash = Animator.StringToHash("moveX");
@@ -49,23 +51,16 @@ public class PlayerMovementController : MonoBehaviour
     #endregion
     private void Awake()
     {
-        if (Instance == null)
-        {
-            Instance = this;
-            DontDestroyOnLoad(gameObject);
-        }
-        else if (Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
         if (afterImagePool == null)
             afterImagePool = GetComponentInChildren<AfterImagePoolScript>();
     }
+    void Start()
+    {
+        // Kendi üzerindeki instance bileþenlerini GameManager'a gönderir
+        _gameManager.RegisterPlayer(this, healthSystem, playerStats);
+    }
     private void OnEnable()
     {
-        if (Instance != null && Instance != this) return;
-
         TargetRegistry.Register(this.transform);
         if (moveAction != null) moveAction.action.Enable();
         if (dashAction != null) dashAction.action.Enable();
@@ -73,8 +68,6 @@ public class PlayerMovementController : MonoBehaviour
 
     private void OnDisable()
     {
-        if (Instance != null && Instance != this) return;
-
         TargetRegistry.Unregister(this.transform);
         if (moveAction != null) moveAction.action.Disable();
         if (dashAction != null) dashAction.action.Disable();
@@ -113,7 +106,7 @@ public class PlayerMovementController : MonoBehaviour
     {
         if (dashAction != null && dashAction.action.WasPressedThisFrame() && !_isDashing && _canDash && input != Vector2.zero)
         {
-            if (PlayerDataManager.Instance.currentEnergy >= (int)dashEnergyCost)
+            if (_playerDataManager.currentEnergy >= (int)dashEnergyCost)
             {
                 _dashRequested = true;
                 _dashDirection = input.normalized;
@@ -209,15 +202,13 @@ public class PlayerMovementController : MonoBehaviour
         if (!_isReadyToMove) return;
         Debug.Log("Oyuncu öldü.");
         _isReadyToMove = false;
+        rb2D.linearVelocity = Vector2.zero;
         animator.Play("Death");
         //play death animation, game over screen, vs.
     }
     private void OnDestroy()
     {
-        if (Instance == this)
-        {
-            TargetRegistry.Unregister(this.transform);
-        }
+        TargetRegistry.Unregister(this.transform);
     }
     public void ResetLastImagePosition()
     {

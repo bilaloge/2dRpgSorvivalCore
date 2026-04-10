@@ -1,26 +1,32 @@
 using UnityEngine;
 using TMPro;
 using System.Collections;
+using Zenject;
 
 public class ClockUIController : MonoBehaviour
 {
+    [Inject] private TimeManager _timeManager;
+
     [SerializeField] private TextMeshProUGUI clockText;
     [SerializeField] private RectTransform dayNightWheel;
     [SerializeField] private float rotationDuration = 0.5f;
 
     private Coroutine rotationCoroutine;
-    private void OnEnable()
+    private void Start()
     {
-        if (TimeManager.Instance != null)
+        if (_timeManager != null)
         {
-            TimeManager.Instance.OnTimeChanged += HandleTimeChange;
+            // 1. O ANKÝ ZAMANI HEMEN YAZDIR (00:00 kalmamasý için)
+            HandleTimeChange(_timeManager.Hour, _timeManager.Minute);
+
+            // 2. ABONE OL (Bundan sonraki her dakika deðiþimini dinle)
+            _timeManager.OnTimeChanged += HandleTimeChange;
         }
     }
-
     private void OnDisable()
     {
-        if (TimeManager.Instance != null)
-            TimeManager.Instance.OnTimeChanged -= HandleTimeChange;
+        if (_timeManager != null)
+            _timeManager.OnTimeChanged -= HandleTimeChange;
     }
     private void HandleTimeChange(int hours, int minutes)
     {
@@ -38,7 +44,7 @@ public class ClockUIController : MonoBehaviour
     private IEnumerator SmoothRotate(float targetZ)
     {
         // KULLANDIÐIM ASSET YAMUK OLDUÐU ÝÇÝN -90 DERECE DÖNDÜRDÜM. BAÞKA ASSET KOYUNCA BUNU DÜZELT!!!!!
-        float finalTargetZ = targetZ - 90f;
+        float finalTargetZ = targetZ; //- 90f;
         Quaternion startRot = dayNightWheel.rotation;
         Quaternion endRot = Quaternion.Euler(0, 0, finalTargetZ);
         float time = 0;

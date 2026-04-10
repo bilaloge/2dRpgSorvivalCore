@@ -4,8 +4,11 @@ using System.Collections;
 using TMPro;
 using UnityEngine.SceneManagement;
 using System.IO;
+using Zenject;
 public class MainMenuManager : MonoBehaviour
 {
+    [Inject] private GameDataManager _gameDataManager;
+
     [Header("Core Panels")]
     [SerializeField] private RectTransform mainMenuPanel;
     [SerializeField] private RectTransform newGamePanel;
@@ -35,8 +38,8 @@ public class MainMenuManager : MonoBehaviour
 
     [Header("Animation Settings")]
     [SerializeField] private float transitionSpeed = 10f;
-    private Vector2 screenHiddenPosition = new Vector2(2000, 0); // Saðda bekleme noktasý
-    private Vector2 screenHiddenLeft = new Vector2(-2000, 0);    // Solda bekleme noktasý
+    private Vector2 screenHiddenPosition; // Saðda bekleme noktasý
+    private Vector2 screenHiddenLeft;    // Solda bekleme noktasý
     private Vector2 screenCenter = Vector2.zero;
     private RectTransform currentActivePanel; // Ekranda o an hangi alt panelin açýk olduðunu tutar
 
@@ -45,10 +48,20 @@ public class MainMenuManager : MonoBehaviour
 
     private void Start()
     {
-        SetupInitialPositions();
-        SetupButtonListeners();
-        SetDifficulty(1);// Oyun baþlarken "Normal" butonunu seçili yap
+        //Canvas'ýn gerçek geniþliðini aldýk sonrada 
+        // RectTransform olan bir panelin içinden(main menu gibi) canvas geniþliðine ulaþtýk
+        Canvas canvas = mainMenuPanel.GetComponentInParent<Canvas>();
+        float canvasWidth = canvas.GetComponent<RectTransform>().rect.width;
 
+        // Paneli ekran geniþliðinin tam 1.5 katý uzaða atttým. kafam rahat
+        float offScreenValue = canvasWidth * 1.5f;
+
+        screenHiddenPosition = new Vector2(offScreenValue, 0);
+        screenHiddenLeft = new Vector2(-offScreenValue, 0);
+
+        SetupInitialPositions(); // Bu deðerler hesaplandýktan sonra çaðrýlmalý
+        SetupButtonListeners();
+        SetDifficulty(1);
         CheckContinueButton();
     }
     private void SetupInitialPositions()
@@ -159,14 +172,14 @@ public class MainMenuManager : MonoBehaviour
 
         if (string.IsNullOrWhiteSpace(playerName)) return;
 
-        GameDataManager.Instance.CreateNewWorld(playerName, selectedDifficulty);
+        _gameDataManager.CreateNewWorld(playerName, selectedDifficulty);
 
         // Sahneyi yükle
         SceneManager.LoadScene(firstLevelName);
     }
     public void OnContinueButtonClicked()
     {
-        GameDataManager.Instance.ContinueLatestGame();
+        _gameDataManager.ContinueLatestGame();
     }
     private void QuitGame()
     {

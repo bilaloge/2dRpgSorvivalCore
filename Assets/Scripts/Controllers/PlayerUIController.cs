@@ -2,9 +2,13 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
+using Zenject;
+using System;
 
 public class PlayerUIController : MonoBehaviour
 {
+    [Inject] private GameManager _gameManager;
+
     [Header("Health UI")]
     [SerializeField] private Slider healthSlider;
     [SerializeField] private TextMeshProUGUI healthText;
@@ -20,7 +24,7 @@ public class PlayerUIController : MonoBehaviour
     [SerializeField] private TextMeshProUGUI energyText;
     [SerializeField] private float energyLerpSpeed = 10f;
 
-    [SerializeField] private HealthSystem healthSystem;
+    private HealthSystem _activeHealthSystem;
 
     private Coroutine _healthCorr;
     private Coroutine _manaCorr;
@@ -28,25 +32,45 @@ public class PlayerUIController : MonoBehaviour
 
     private void Start()
     {
-
-        // Sahne açýldýðýnda barlarý eþitle
-        healthSystem.NotifyAll();
+        if (_gameManager != null)
+        {
+            _gameManager.OnPlayerRegistered += InitializeUIWithPlayer;
+            InitializeUIWithPlayer();
+        }
     }
-
-    private void OnEnable()
+    private void OnDisable()
     {
-        // HealthSystem eventlerini dinle
-        healthSystem.OnHealthChanged += UpdateHealthBar;
-        healthSystem.OnManaChanged += UpdateManaBar;
-        healthSystem.OnEnergyChanged += UpdateEnergyBar;
-    }
-    private void OnDestroy()
-    {
+        if (_gameManager != null)
+            _gameManager.OnPlayerRegistered -= InitializeUIWithPlayer;
+        UnsubscribeFromHealth();
         // Eventleri dinlerken unutulmamalarý için OnDestroy'da eventleri un-subscribe etmek önemlidir.
-        healthSystem.OnHealthChanged -= UpdateHealthBar;
-        healthSystem.OnManaChanged -= UpdateManaBar;
-        healthSystem.OnEnergyChanged -= UpdateEnergyBar;
     }
+    private void InitializeUIWithPlayer()
+    {
+        UnsubscribeFromHealth();
+
+        _activeHealthSystem = _gameManager.HealthSystem;
+
+        if (_activeHealthSystem != null)
+        {
+            _activeHealthSystem.OnHealthChanged += UpdateHealthBar;
+            _activeHealthSystem.OnManaChanged += UpdateManaBar;
+            _activeHealthSystem.OnEnergyChanged += UpdateEnergyBar;
+
+            // Barlarý mevcut deðerlere eþitle
+            _activeHealthSystem.NotifyAll();
+        }
+    }
+    private void UnsubscribeFromHealth()
+    {
+        if (_activeHealthSystem != null)
+        {
+            _activeHealthSystem.OnHealthChanged -= UpdateHealthBar;
+            _activeHealthSystem.OnManaChanged -= UpdateManaBar;
+            _activeHealthSystem.OnEnergyChanged -= UpdateEnergyBar;
+        }
+    }
+
     private void UpdateHealthBar(int current, int max)
     {
         {

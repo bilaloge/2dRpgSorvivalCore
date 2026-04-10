@@ -1,10 +1,12 @@
 using UnityEngine;
 using System.IO;
 using System.Collections.Generic;
-
+using Zenject;
 public class GameDataManager : MonoBehaviour
 {
-    public static GameDataManager Instance { get; private set; }
+    [Inject] private GameManager _gameManager;
+    [Inject] private PlayerDataManager _playerDataManager;
+    [Inject] private SceneLoadManager _sceneLoadManager;
 
     [Header("World Data (Runtime)")]
     private WorldSaveData _worldData = new WorldSaveData();
@@ -14,14 +16,6 @@ public class GameDataManager : MonoBehaviour
     public int currentDifficulty { get; private set; }
     private void Awake()
     {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-        Instance = this;
-        DontDestroyOnLoad(gameObject);
-
         _worldSavePath = Path.Combine(Application.persistentDataPath, "World_Main.json");
     }
     public void EndDayAndSave(bool sleptInBed)
@@ -30,43 +24,43 @@ public class GameDataManager : MonoBehaviour
 
         if(sleptInBed)
         {
-            PlayerDataManager.Instance.currentHealth = GameManager.Instance.PlayerStats.TotalMaxHealth;
-            PlayerDataManager.Instance.currentEnergy = GameManager.Instance.PlayerStats.TotalMaxEnergy;
+            _playerDataManager.currentHealth = _gameManager.PlayerStats.TotalMaxHealth;
+            _playerDataManager.currentEnergy = _gameManager.PlayerStats.TotalMaxEnergy;
         }
         else
         {
             ApplyPassedOutDebuffs();
         }
 
-        GameManager.Instance.HealthSystem.SleepAndRestore(sleptInBed);
+        _gameManager.HealthSystem.SleepAndRestore(sleptInBed);
 
         //DÜNYA VERÝLERÝNÝ TOPLA
         CollectWorldDynamicData();
 
         //Karakter Dosyasýný Kaydet
-        PlayerDataManager.Instance.SaveCharacter();
+        _playerDataManager.SaveCharacter();
 
         //Dünya Dosyasýný Kaydet
         SaveWorldToFile();
 
-        string targetScene = PlayerDataManager.Instance.lastSceneName;
-        string targetID = PlayerDataManager.Instance.lastSpawnID;
+        string targetScene = _playerDataManager.lastSceneName;
+        string targetID = _playerDataManager.lastSpawnID;
 
-        SceneLoadManager.Instance.LoadNewScene(targetScene, targetID);
+        _sceneLoadManager.LoadNewScene(targetScene, targetID);
     }
     private void ApplyPassedOutDebuffs()//sýzma senaryosunda
     {
         // Örn: inventorydeki itemler ve kuþanýlan itemlerden rastgele 1-2 item çalýnsýn. bu itemlerin kayý tutlarak karakola gittiðinde bunlarýn geri gelmesi saðlanacak. bunun için sonra kod yazýcam
         //þu an için test amacý ile enerjý yarýda baþlat
-        PlayerDataManager.Instance.currentEnergy = GameManager.Instance.PlayerStats.TotalMaxEnergy/2;
-        if (string.IsNullOrEmpty(PlayerDataManager.Instance.lastSpawnID))
+        _playerDataManager.currentEnergy = _gameManager.PlayerStats.TotalMaxEnergy/2;
+        if (string.IsNullOrEmpty(_playerDataManager.lastSpawnID))
         {
-            PlayerDataManager.Instance.UpdateLastLocation("StartZone", "Default");
+            _playerDataManager.UpdateLastLocation("StartZone", "Default");
             Debug.Log("Hiç yatak kaydý yok, baþlangýca gönderildi.");
         }
         else
         {
-            Debug.Log($"Sýzýldý. Son kayýtlý yatakta ({PlayerDataManager.Instance.lastSpawnID}) uyanýlacak.");
+            Debug.Log($"Sýzýldý. Son kayýtlý yatakta ({_playerDataManager.lastSpawnID}) uyanýlacak.");
         }
     }
     private void CollectWorldDynamicData()
@@ -107,7 +101,7 @@ public class GameDataManager : MonoBehaviour
         _worldData.isNewWorld = true; // Karakterin sahilde doðmasýný tetikler
 
         SaveWorldToFile();
-        PlayerDataManager.Instance.ResetToDefaultStats();
+        _playerDataManager.ResetToDefaultStats();
         Debug.Log($"{worldName} adýnda yeni bir evren yaratýldý.");
     }
     public void LoadWorld()
@@ -121,7 +115,7 @@ public class GameDataManager : MonoBehaviour
     public void ContinueLatestGame()
     {
         LoadWorld();
-        PlayerDataManager.Instance.LoadCharacter();
+        _playerDataManager.LoadCharacter();
 
         string targetScene;
         string targetID;
@@ -131,17 +125,17 @@ public class GameDataManager : MonoBehaviour
         if (_worldData.isNewWorld)
         {
             targetScene = "StartZone";
-            targetID = "Beach_Spawn";
+            targetID = "Default";
 
             _worldData.isNewWorld = false;
             SaveWorldToFile();
         }
         else
         {
-            targetScene = PlayerDataManager.Instance.lastSceneName;
-            targetID = PlayerDataManager.Instance.lastSpawnID;
+            targetScene = _playerDataManager.lastSceneName;
+            targetID = _playerDataManager.lastSpawnID;
         }
 
-        SceneLoadManager.Instance.LoadNewScene(targetScene, targetID);  
+        _sceneLoadManager.LoadNewScene(targetScene, targetID);  
     }
 }

@@ -1,77 +1,129 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using System.Collections.Generic;
+using Zenject;
 
 public class SceneLoadManager : MonoBehaviour
 {
-    public static SceneLoadManager Instance { get; private set; }
+    [Inject] private DiContainer _container; // Prefablarý Zenject ile oluþturmak için motor(yeni öðrendim :D)
+    [Inject] private GameManager _gameManager;
+    [Inject] private PlayerStats _playerStats;
+    [Inject] private PlayerDataManager _playerDataManager;
 
+    [Inject(Id = "Player")] private GameObject _playerPrefab;
     // O anki sahnedeki SpawnPoint'lerin listesi
-    private Dictionary<string, Transform> activeSpawnPoints = new Dictionary<string, Transform>();
 
     // Gidilecek hedefin ID'si
     private string targetSpawnID;
-
-    private void Awake()
-    {
-        if (Instance == null)
-        {
-            Instance = this;
-            DontDestroyOnLoad(gameObject);
-        }
-        else
-        {
-            Destroy(gameObject);
-        }
-    }
-
     private void OnEnable() => SceneManager.sceneLoaded += OnSceneLoaded;
     private void OnDisable() => SceneManager.sceneLoaded -= OnSceneLoaded;
-
-    // Doðuþ noktalarý sahneye gelince kendini bu listeye yazdýrýr
-    public void RegisterSpawnPoint(string id, Transform pointTransform)
+    private void Start()
     {
-        if (!activeSpawnPoints.ContainsKey(id))
+        if (_gameManager.MovementController == null)
         {
-            activeSpawnPoints.Add(id, pointTransform);
+            string currentScene = SceneManager.GetActiveScene().name;
+            if (!currentScene.ToLower().Contains("mainmenu"))
+            {
+                SpawnAndRegisterPlayer();
+            }
         }
     }
-    public void UnregisterSpawnPoint(string id)
-    {
-        if (activeSpawnPoints.ContainsKey(id))
-        {
-            activeSpawnPoints.Remove(id);
-        }
-    }
-    // Portaldan geçildiðinde çaðrýlacak metod
-    public void LoadNewScene(string sceneName, string spawnID)
+    public void LoadNewScene(string sceneName, string spawnID)//portaldan geçilince çaðýrýlacak metod
     {
         targetSpawnID = spawnID;
         SceneManager.LoadScene(sceneName);
     }
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        // Hedef ID doluysa ve listede o ID'ye sahip bir yer varsa:
-        if (!string.IsNullOrEmpty(targetSpawnID) && activeSpawnPoints.TryGetValue(targetSpawnID, out Transform targetPoint))
+        if (scene.name.ToLower().Contains("mainmenu")) return;
+
+        if (_gameManager.MovementController == null)
         {
-            if (PlayerMovementController.Instance != null)
+            SpawnAndRegisterPlayer();
+        }
+        else//karakter zaten oluþturulmuþsa
+        {
+            PositionPlayer();
+            AssignCameraToPlayer();
+            targetSpawnID = null;
+        }
+    }
+    private void SpawnAndRegisterPlayer()
+    {
+        GameObject playerObj = _container.InstantiatePrefab(_playerPrefab);//karakter zenject ile prefabdan oluþturuluyor
+
+        var mc = playerObj.GetComponentInChildren<PlayerMovementController>();
+        var hs = playerObj.GetComponentInChildren<HealthSystem>();
+
+        _gameManager.RegisterPlayer(mc, hs, _playerStats);
+        //karakteri pozisyonlamazsak olmaz
+        PositionPlayer();
+        AssignCameraToPlayer();
+
+        targetSpawnID = null;
+    }
+    private void PositionPlayer()
+    {
+        if (_gameManager.MovementController == null)
+        {
+            Debug.LogError("PositionPlayer baþarýsýz: MovementController hala NULL!");
+            return;
+        }
+        SpawnPointController[] allSpawnPoints = Object.FindObjectsByType<SpawnPointController>(FindObjectsSortMode.None);
+
+        string idToLook = "Default";
+
+        if(!string.IsNullOrEmpty(targetSpawnID))
+        {
+            // A. Portaldan geldiyse kesinlikle portala git
+            idToLook = targetSpawnID;
+        }
+        else if (_playerDataManager != null && !string.IsNullOrEmpty(_playerDataManager.lastSpawnID))
+        {
+            // B. Portaldan gelmediyse ama kayýtta bir yatak ID'si varsa yataða git
+            idToLook = _playerDataManager.lastSpawnID;
+        }
+        Transform targetPoint = null;
+
+        foreach (var sp in allSpawnPoints)
+        {
+            // Trim() -> Baþýndaki sonundaki boþluklarý siler
+            // ToLower() -> Her þeyi küçük harfe çevirip öyle bakar (Hata payýný sýfýrlar)
+            if (sp.SpawnID.Trim().ToLower() == idToLook.Trim().ToLower())
             {
-                PlayerMovementController.Instance.transform.position = targetPoint.position;
-                PlayerMovementController.Instance.ResetLastImagePosition();
+                targetPoint = sp.transform;
+                break;
             }
         }
-        // 2. Kamerayý Baðla (ID olsun ya da olmasýn, karakter varsa kamera takip etmeli)
-        AssignCameraToPlayer();
-        // ID'yi temizle ki bir sonraki geçiþ temiz olsun
-        targetSpawnID = null;
+        if (targetPoint == null)
+        {
+            Debug.LogWarning($"Hedef nokta ({idToLook}) bulunamadý! Default'a dönülüyor.");
+            foreach (var sp in allSpawnPoints)
+            {
+                if (sp.SpawnID == "Default")
+                {
+                    targetPoint = sp.transform;
+                    break;
+                }
+            }
+        }
+        if (targetPoint != null)//gidilmesi gereken spawnpoint tarandý ve bulundu yukarýda. þimdi de ýþýnlama
+        {
+            var playerTransform = _gameManager.MovementController.transform;
+            playerTransform.position = targetPoint.position;
+            _gameManager.MovementController.ResetLastImagePosition();
+        }
+        else
+        {
+            Debug.LogError("Sahne yüklendi ama hiçbir spawn noktasý (Default dahil) bulunamadý!");
+        }
     }
     private void AssignCameraToPlayer()
     {
         var vCam = FindFirstObjectByType<Unity.Cinemachine.CinemachineCamera>();
-        if (vCam != null && PlayerMovementController.Instance != null)
+        if (vCam != null && _gameManager.MovementController != null)
         {
-            vCam.Follow = PlayerMovementController.Instance.transform;
-            vCam.ForceCameraPosition(PlayerMovementController.Instance.transform.position, Quaternion.identity);
+            vCam.Follow = _gameManager.MovementController.transform;
+            vCam.ForceCameraPosition(_gameManager.MovementController.transform.position, Quaternion.identity);
         }
     }
 }

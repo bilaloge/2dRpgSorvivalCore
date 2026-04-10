@@ -1,10 +1,11 @@
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
+using Zenject;
 
 public class PlayerDataManager : MonoBehaviour
 {
-    public static PlayerDataManager Instance { get; private set; }
+    [Inject] private GameManager _gameManager;
 
     [Header("Runtime Player Stats")]
     public int currentHealth;
@@ -29,15 +30,7 @@ public class PlayerDataManager : MonoBehaviour
 
     private void Awake()
     {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-        Instance = this;
-        DontDestroyOnLoad(gameObject);
-
-        _savePath = Path.Combine(Application.persistentDataPath, "Character_Hero.json");
+       _savePath = Path.Combine(Application.persistentDataPath, "Character_Hero.json");
 
         // Baþlangýçta verileri hazýrla
         InitializeStats();
@@ -70,7 +63,7 @@ public class PlayerDataManager : MonoBehaviour
         }
 
         lastSceneName = "StartZone";
-        lastSpawnID = "Beach_Spawn";
+        lastSpawnID = "Default";
 
         // Geri kalan her þey (Silah seviyesi vb.) zaten statik sayýlar
         customWeaponLevel = 1;
@@ -78,7 +71,7 @@ public class PlayerDataManager : MonoBehaviour
         weaponEnhancement = "None";
 
         // HealthSystem sahne yüklendiðinde oluþacaðý için null-check þart
-        GameManager.Instance?.HealthSystem?.NotifyAll();
+        _gameManager?.HealthSystem?.NotifyAll();
     }
     public void SaveCharacter()
     {
@@ -89,7 +82,7 @@ public class PlayerDataManager : MonoBehaviour
             currentEnergy = this.currentEnergy,
             lastSceneName = this.lastSceneName,
             lastSpawnID = this.lastSpawnID,
-            infectionLevel = GameManager.Instance.PlayerStats.infectionLevel,
+            infectionLevel = _gameManager.PlayerStats.infectionLevel,
             npcRelationships = new List<NpcRelationshipData>(npcRelationships)
         };
         data.customWeapon.weaponLevel = customWeaponLevel;
@@ -112,14 +105,14 @@ public class PlayerDataManager : MonoBehaviour
         this.lastSpawnID = data.lastSpawnID;
 
         // Enfeksiyonu runtime stats'a aktar
-        if (GameManager.Instance != null && GameManager.Instance.PlayerStats != null)
-            GameManager.Instance.PlayerStats.infectionLevel = data.infectionLevel;
+        if (_gameManager != null && _gameManager.PlayerStats != null)
+            _gameManager.PlayerStats.infectionLevel = data.infectionLevel;
 
         this.customWeaponLevel = data.customWeapon.weaponLevel;
         this.currentWeaponDurability = data.customWeapon.currentDurability;
         this.weaponEnhancement = data.customWeapon.enhancementType;
         this.npcRelationships = data.npcRelationships;
 
-        GameManager.Instance?.HealthSystem?.NotifyAll();
+        _gameManager?.HealthSystem?.NotifyAll();
     }
 }

@@ -1,10 +1,10 @@
 using System;
 using UnityEngine;
+using Zenject;
 
 public class TimeManager : MonoBehaviour
 {
-    public static TimeManager Instance { get; private set; }
-
+    [Inject] GameDataManager _gameDataManager;
     [Header("Zaman Ayarlarý")]
     [SerializeField] private float gameTimeScale = 60f;
     [SerializeField] private int startHour = 6;  // Uyanýþ
@@ -26,10 +26,6 @@ public class TimeManager : MonoBehaviour
     public event Action OnDayEnded;// saat 2 de
     private void Awake()
     {
-        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
-        Instance = this;
-        DontDestroyOnLoad(gameObject);
-
         TotalPlayTime = startHour * 3600f;
     }
     private void Update()
@@ -67,8 +63,8 @@ public class TimeManager : MonoBehaviour
 
             // KRÝTÝK: GameDataManager'ý tetikle (Sýzma senaryosu)
             // Oyuncu yataða gitmediði için false gönderiyoruz.
-            if (GameDataManager.Instance != null)
-                GameDataManager.Instance.EndDayAndSave(false);
+            if (_gameDataManager != null)
+                _gameDataManager.EndDayAndSave(false);
 
             // Günü otomatik olarak bir sonraki sabaha atlat
             SkipToNextDay();
@@ -103,7 +99,6 @@ public class TimeManager : MonoBehaviour
     {
         float startSec = startHour * 3600f;
         float endSec = (24 + endHour) * 3600f;
-
         float currentSec = (TotalPlayTime % 86400f);
         // Eðer gece yarýsýndan sonraysak (00:00 - 02:00), bunu 24:00+ olarak hesapla
         if (currentSec < startSec) currentSec += 86400f;

@@ -1,0 +1,84 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &3271120445698337537
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6158257865416310321}
+  - component: {fileID: 1176484593519186537}
+  - component: {fileID: 4435335517698563511}
+  m_Layer: 0
+  m_Name: ProjectContext
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6158257865416310321
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3271120445698337537}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1176484593519186537
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3271120445698337537}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a4e6589720da476459dc6dd71624b071, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Zenject::Zenject.ProjectContext
+  _scriptableObjectInstallers: []
+  _monoInstallers:
+  - {fileID: 4435335517698563511}
+  _installerPrefabs: []
+  _parentNewObjectsUnderContext: 1
+  _editorReflectionBakingCoverageMode: 0
+  _buildsReflectionBakingCoverageMode: 0
+  _settings:
+    _ensureDeterministicDestructionOrderOnApplicationQuit: 0
+    _displayWarningWhenResolvingDuringInstall: 1
+    _validationRootResolveMethod: 0
+    _validationErrorResponse: 0
+    _signalSettings:
+      _defaultSyncMode: 0
+      _missingHandlerDefaultResponse: 2
+      _requireStrictUnsubscribe: 0
+      _defaultAsyncTickPriority: 1
+--- !u!114 &4435335517698563511
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3271120445698337537}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4684967a8c032ad4cabc77429590808b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GlobalProjectInstaller
+  playerPrefab: {fileID: 2375715721837023281, guid: d6673166daf5052469c3ee4cc94cc761, type: 3}
+  gameManagerPrefab: {fileID: 8498349588327380195, guid: b5d6f556a24ffe14c8d1f7f627673b54, type: 3}
+  timeManagerPrefab: {fileID: 7845756280676207887, guid: 6b08e501d880c4442b272d2f8908740b, type: 3}
+  sceneLoadManagerPrefab: {fileID: 6671634653833687117, guid: f5fd6a3bf5e48ff4ead1cf1f1390e399, type: 3}
+  gameDataManagerPrefab: {fileID: 2501943422773881037, guid: e4840e456d0e4ed46a24460d15b19937, type: 3}
+  playerDataManagerPrefab: {fileID: 7524788808431533226, guid: 2fb924035deb29844bf314635b65b0c5, type: 3}
+  eventSystemPrefab: {fileID: 606565736980424513, guid: e0e6c2c37df20144388d98937785d28f, type: 3}
+  playerStats: {fileID: 11400000, guid: 95717ecfe757f3b4e879af2f84ddf6a5, type: 2}

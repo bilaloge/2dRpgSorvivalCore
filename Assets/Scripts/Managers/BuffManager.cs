@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using Zenject;
 
 [System.Serializable]
 public class ActiveBuff
@@ -11,6 +12,7 @@ public class ActiveBuff
 
 public class BuffManager : MonoBehaviour
 {
+    [Inject] private GameManager _gameManager;
     public static BuffManager Instance { get; private set; }
 
     [Header("Aktif Durumlar")]
@@ -25,7 +27,7 @@ public class BuffManager : MonoBehaviour
     private void Update()
     {
         // Oyun duraklatýlmýþsa efektleri iþletme
-        if (GameManager.Instance.CurrentState != GameState.Playing) return;
+        if (_gameManager.CurrentState != GameState.Playing) return;
 
         ProcessBuffs();
     }

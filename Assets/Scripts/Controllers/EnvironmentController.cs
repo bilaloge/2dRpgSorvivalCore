@@ -1,9 +1,13 @@
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
+using Zenject;
 
 public class EnvironmentController : MonoBehaviour
 {
+    [Inject] private TimeManager _timeManager;
+    [SerializeField] private bool isIndoors;
+
     [Header("Post-Processing")]
     [SerializeField] private Volume postProcessingVolume;
 
@@ -38,9 +42,9 @@ public class EnvironmentController : MonoBehaviour
     }
     private void Update()
     {
-        if (TimeManager.Instance == null || colorAdjustments == null || whiteBalance == null) return;
+        if (_timeManager == null || colorAdjustments == null || whiteBalance == null) return;
 
-        float dayProgress = TimeManager.Instance.GetActiveDayPercentage();
+        float dayProgress = _timeManager.GetActiveDayPercentage();
 
         CalculateTargetValues(dayProgress, out float targetExp, out float targetTemp, out Color targetColor);
 

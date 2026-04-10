@@ -1,32 +1,51 @@
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
+using Zenject;
 
 public class BedController : MonoBehaviour
 {
+    [Inject] private TimeManager _timeManager;
+    [Inject] private PlayerDataManager _playerDataManager;
+    [Inject] private GameDataManager _gameDataManager;
+
     [Header("Ayarlar")]
-    [Tooltip("Bu yataðýn yanýndaki SpawnPoint'in ID'si (Örn: Home_Bed_Spawn)")]
+    [Tooltip("Bu yataï¿½ï¿½n yanï¿½ndaki SpawnPoint'in ID'si (ï¿½rn: Home_Bed_Spawn)")]
     [SerializeField] private string bedSpawnID;
+    [SerializeField] private GameObject sleepChoicePanel;
     private void OnTriggerEnter2D(Collider2D collision)
     {
-        // Sadece "Player" tagine sahip obje girince çalýþsýn
         if (collision.CompareTag("Player"))
         {
-            Debug.Log("Yataða girildi, uyuma iþlemi baþlatýlýyor...");
-            UseBed();
+            OpenSleepMenu();
         }
     }
-    public void UseBed()
+    private void OpenSleepMenu()
     {
-        // 1. Karakterin uyanacaðý yeri güncelle
-        PlayerDataManager.Instance.UpdateLastLocation(
-            SceneManager.GetActiveScene().name,
-            bedSpawnID
-        );
+        EventSystem.current.SetSelectedGameObject(null);
+        if (sleepChoicePanel != null)
+        {
+            sleepChoicePanel.SetActive(true);
+            //Time.timeScale = 0f; // BUNU Aï¿½INCA TUï¿½LARA BASILMIYOR. ZAMAN DURUNCA CANVAS DA DONUYOR. BUNA Bï¿½R ï¿½ï¿½Zï¿½M BULANA KADAR Bï¿½YLE KALSIN
+        }
+    }
+    public void OnSleepSelected()
+    {
+        Time.timeScale = 1f; // Zamanï¿½ geri baï¿½lat
+        sleepChoicePanel.SetActive(false);
 
-        // 2. Günü bitir (true = yatakta uyudu)
-        GameDataManager.Instance.EndDayAndSave(true);
-        TimeManager.Instance.SkipToNextDay();
+        _playerDataManager.UpdateLastLocation(SceneManager.GetActiveScene().name, bedSpawnID);
 
-        Debug.Log($"Yatakta uyundu. Konum kaydedildi: {bedSpawnID}");
+        _gameDataManager.EndDayAndSave(true);
+        _timeManager.SkipToNextDay();
+
+    }
+    public void OnRestSelected()
+    {
+        Time.timeScale = 1f;
+        sleepChoicePanel.SetActive(false);
+
+        _playerDataManager.currentEnergy = Mathf.Min(_playerDataManager.currentEnergy + 30, 100);
+        Debug.Log("Dinlenildi, enerji bir miktar tazelendi.");
     }
 }

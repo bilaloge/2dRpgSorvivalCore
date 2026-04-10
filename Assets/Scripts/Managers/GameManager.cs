@@ -1,12 +1,9 @@
 using UnityEngine;
 using System;
 using UnityEngine.SceneManagement;
-
-// ÇIKARILDI: MainMenu
 public enum GameState { Playing, Paused, Died }
 public class GameManager : MonoBehaviour
 {
-    public static GameManager Instance { get; private set; }
 
     [Header("Session References")]
     public PlayerMovementController MovementController { get; private set; }
@@ -16,13 +13,6 @@ public class GameManager : MonoBehaviour
 
     public event Action<GameState> OnGameStateChanged;
     public event Action OnPlayerRegistered;
-
-    private void Awake()
-    {
-        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
-        Instance = this;
-        DontDestroyOnLoad(gameObject);
-    }
 
     public void RegisterPlayer(PlayerMovementController mc, HealthSystem hs, PlayerStats ps)
     {

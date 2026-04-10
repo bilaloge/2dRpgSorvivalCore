@@ -1,9 +1,12 @@
 ﻿using UnityEngine;
 using System;
 using System.Collections;
+using Zenject;
 
 public class HealthSystem : MonoBehaviour
 {
+    [Inject] private GameManager _gameManager;
+    [Inject] private PlayerDataManager _playerDataManager;
     public static HealthSystem Instance { get; private set; }
 
     [SerializeField] private PlayerStats playerStats;
@@ -33,11 +36,11 @@ public class HealthSystem : MonoBehaviour
     private void Start()
     {
         NotifyAll();
-        if (GameManager.Instance != null)
+        if (_gameManager != null)
         {
             // movementController ve playerStats zaten yukarıda [SerializeField] olarak tanımlıydı.
             // Eğer tanımlı değilse GetComponent ile de alabilirsin.
-            GameManager.Instance.RegisterPlayer(playerMovementController, this, playerStats);
+            _gameManager.RegisterPlayer(playerMovementController, this, playerStats);
         }
         else
         {
@@ -46,7 +49,7 @@ public class HealthSystem : MonoBehaviour
     }
     private void Update()
     {
-        if (GameManager.Instance.CurrentState == GameState.Playing)
+        if (_gameManager.CurrentState == GameState.Playing)
         {
             RegenerateStats();
         }
@@ -58,7 +61,7 @@ public class HealthSystem : MonoBehaviour
 
         int finalDamage = combatRules.CalculateDamage(baseDamage, playerStats.TotalArmor);
 
-        var data = PlayerDataManager.Instance;
+        var data = _playerDataManager;
         data.currentHealth = Mathf.Max(0, data.currentHealth - finalDamage);
 
         _hpAccumulator = 0;// Hasar alınca regen duruyor
@@ -76,7 +79,7 @@ public class HealthSystem : MonoBehaviour
     }
     public void TakeEffectDamage(int amount)//zırhtan bağımsız zehir hasarı, aynı zamanda ölümsüzlük süresini de tetiklemez.
     {
-        var data = PlayerDataManager.Instance;
+        var data = _playerDataManager;
         data.currentHealth = Mathf.Max(0, data.currentHealth - amount);
 
         _hpAccumulator = 0; // Zehir can yenilenmesini durdurur
@@ -114,7 +117,7 @@ public class HealthSystem : MonoBehaviour
     }
     private void RegenerateStats()
     {
-        var data = PlayerDataManager.Instance;
+        var data = _playerDataManager;
 
         if (data.currentHealth < playerStats.TotalMaxHealth)
         {
@@ -153,13 +156,13 @@ public class HealthSystem : MonoBehaviour
     // Can yenileme, potion vs
     public void Heal(int amount)
     {
-        var data = PlayerDataManager.Instance;
+        var data = _playerDataManager;
         data.currentHealth = Mathf.Clamp(data.currentHealth + amount, 0, playerStats.TotalMaxHealth);
         NotifyHealthChange();
     }
     public void ReduceEnergy(int amount)
     {
-        var data = PlayerDataManager.Instance;
+        var data = _playerDataManager;
         data.currentEnergy = Mathf.Max(0, data.currentEnergy - amount);
         NotifyEnergyChange();
     }
@@ -171,7 +174,7 @@ public class HealthSystem : MonoBehaviour
             BuffManager.Instance.ClearAllBuffs();
         }
 
-        var data = PlayerDataManager.Instance;
+        var data = _playerDataManager;
 
         data.currentHealth = playerStats.TotalMaxHealth;
         data.currentMana = playerStats.TotalMaxMana;
@@ -191,16 +194,16 @@ public class HealthSystem : MonoBehaviour
     // Health değerini UI'ya bildir
     public void NotifyHealthChange()
     {
-        OnHealthChanged?.Invoke(PlayerDataManager.Instance.currentHealth, playerStats.TotalMaxHealth);
+        OnHealthChanged?.Invoke(_playerDataManager.currentHealth, playerStats.TotalMaxHealth);
     }
     public void NotifyManaChange()
     {
-        OnManaChanged?.Invoke(PlayerDataManager.Instance.currentMana, playerStats.TotalMaxMana);
+        OnManaChanged?.Invoke(_playerDataManager.currentMana, playerStats.TotalMaxMana);
     }
 
     public void NotifyEnergyChange()
     {
-        OnEnergyChanged?.Invoke(PlayerDataManager.Instance.currentEnergy, playerStats.TotalMaxEnergy);
+        OnEnergyChanged?.Invoke(_playerDataManager.currentEnergy, playerStats.TotalMaxEnergy);
     }
     public void NotifyAll()
     {
