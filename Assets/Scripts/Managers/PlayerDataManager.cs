@@ -5,8 +5,12 @@ using Zenject;
 
 public class PlayerDataManager : MonoBehaviour
 {
-    [Inject] private GameManager _gameManager;
+    // ── Inject ───────────────────────────────────────────────────────────────
+    [Inject] private GameManager       _gameManager;
+    [Inject] private InventoryManager  _inventoryManager;
+    [Inject] private EquipmentManager  _equipmentManager;
 
+    // ── Runtime Player Stats ─────────────────────────────────────────────────
     [Header("Runtime Player Stats")]
     public int currentHealth;
     public int currentMana;
@@ -17,9 +21,9 @@ public class PlayerDataManager : MonoBehaviour
     public string lastSpawnID;
 
     [Header("Runtime Weapon Stats")]
-    public int customWeaponLevel = 1;
-    public float currentWeaponDurability = 100f;
-    public string weaponEnhancement = "None";
+    public int    customWeaponLevel       = 1;
+    public float  currentWeaponDurability = 100f;
+    public string weaponEnhancement       = "None";
 
     public List<NpcRelationshipData> npcRelationships = new List<NpcRelationshipData>();
 
@@ -28,91 +32,104 @@ public class PlayerDataManager : MonoBehaviour
 
     private string _savePath;
 
+    // ── Unity ────────────────────────────────────────────────────────────────
     private void Awake()
     {
-       _savePath = Path.Combine(Application.persistentDataPath, "Character_Hero.json");
-
-        // Ba�lang��ta verileri haz�rla
+        _savePath = Path.Combine(Application.persistentDataPath, "Character_Hero.json");
         InitializeStats();
     }
+
+    // ── Public API ────────────────────────────────────────────────────────────
+
     public void InitializeStats()
     {
-        // E�er kay�t varsa oradan y�kle, yoksa SO'dan fulle
         if (File.Exists(_savePath))
-        {
             LoadCharacter();
-        }
         else
-        {
-            ResetToDefaultStats();//e�er kay�t bulunmazsa ba�lang�� ayarlar�
-        }
+            ResetToDefaultStats();
     }
-    // Yata�a yat�ld���nda �a��raca��m�z metod
+
     public void UpdateLastLocation(string sceneName, string spawnID)
     {
         lastSceneName = sceneName;
-        lastSpawnID = spawnID;
+        lastSpawnID   = spawnID;
     }
-    public void ResetToDefaultStats()//ba�lang�� ayarlar�
+
+    public void ResetToDefaultStats()
     {
-        if (this.playerStats != null)
+        if (playerStats != null)
         {
-            currentHealth = this.playerStats.TotalMaxHealth;
-            currentMana = this.playerStats.TotalMaxMana;
-            currentEnergy = this.playerStats.TotalMaxEnergy;
+            currentHealth = playerStats.TotalMaxHealth;
+            currentMana   = playerStats.TotalMaxMana;
+            currentEnergy = playerStats.TotalMaxEnergy;
         }
 
-        lastSceneName = "StartZone";
-        lastSpawnID = "Default";
-
-        // Geri kalan her �ey (Silah seviyesi vb.) zaten statik say�lar
-        customWeaponLevel = 1;
+        lastSceneName         = "StartZone";
+        lastSpawnID           = "Default";
+        customWeaponLevel     = 1;
         currentWeaponDurability = 100f;
-        weaponEnhancement = "None";
+        weaponEnhancement     = "None";
 
-        // HealthSystem sahne y�klendi�inde olu�aca�� i�in null-check �art
         _gameManager?.HealthSystem?.NotifyAll();
     }
+
+    /// <summary>
+    /// Gün sonu (yatak / gece 02:00) çağrılır. Tüm sistem verilerini JSON'a yazar.
+    /// </summary>
     public void SaveCharacter()
     {
         CharacterSaveData data = new CharacterSaveData
         {
-            currentHealth = this.currentHealth,
-            currentMana = this.currentMana,
-            currentEnergy = this.currentEnergy,
-            lastSceneName = this.lastSceneName,
-            lastSpawnID = this.lastSpawnID,
+            currentHealth  = this.currentHealth,
+            currentMana    = this.currentMana,
+            currentEnergy  = this.currentEnergy,
+            lastSceneName  = this.lastSceneName,
+            lastSpawnID    = this.lastSpawnID,
             infectionLevel = _gameManager.PlayerStats.infectionLevel,
             npcRelationships = new List<NpcRelationshipData>(npcRelationships)
         };
-        data.customWeapon.weaponLevel = customWeaponLevel;
+
+        data.customWeapon.weaponLevel       = customWeaponLevel;
         data.customWeapon.currentDurability = (int)currentWeaponDurability;
-        data.customWeapon.enhancementType = weaponEnhancement;
+        data.customWeapon.enhancementType   = weaponEnhancement;
+
+        // ── Envanter ve ekipman verisini yaz ──────────────────────────────
+        _inventoryManager.WriteSaveData(data);
+        _equipmentManager.WriteSaveData(data);
 
         File.WriteAllText(_savePath, JsonUtility.ToJson(data, true));
+        Debug.Log("[PlayerDataManager] Karakter kaydedildi.");
     }
+
+    /// <summary>
+    /// Oyun başlangıcında ya da sahne yüklendiğinde JSON'dan okur.
+    /// </summary>
     public void LoadCharacter()
     {
         if (!File.Exists(_savePath)) return;
+
         string json = File.ReadAllText(_savePath);
         CharacterSaveData data = JsonUtility.FromJson<CharacterSaveData>(json);
 
-        this.currentHealth = data.currentHealth;
-        this.currentMana = data.currentMana;
-        this.currentEnergy = data.currentEnergy;
+        this.currentHealth  = data.currentHealth;
+        this.currentMana    = data.currentMana;
+        this.currentEnergy  = data.currentEnergy;
+        this.lastSceneName  = data.lastSceneName;
+        this.lastSpawnID    = data.lastSpawnID;
 
-        this.lastSceneName = data.lastSceneName;
-        this.lastSpawnID = data.lastSpawnID;
-
-        // Enfeksiyonu runtime stats'a aktar
-        if (_gameManager != null && _gameManager.PlayerStats != null)
+        if (_gameManager?.PlayerStats != null)
             _gameManager.PlayerStats.infectionLevel = data.infectionLevel;
 
-        this.customWeaponLevel = data.customWeapon.weaponLevel;
+        this.customWeaponLevel      = data.customWeapon.weaponLevel;
         this.currentWeaponDurability = data.customWeapon.currentDurability;
-        this.weaponEnhancement = data.customWeapon.enhancementType;
-        this.npcRelationships = data.npcRelationships;
+        this.weaponEnhancement      = data.customWeapon.enhancementType;
+        this.npcRelationships       = data.npcRelationships;
+
+        // ── Envanter ve ekipman verisini oku ──────────────────────────────
+        _inventoryManager.ReadSaveData(data);
+        _equipmentManager.ReadSaveData(data);
 
         _gameManager?.HealthSystem?.NotifyAll();
+        Debug.Log("[PlayerDataManager] Karakter yüklendi.");
     }
 }

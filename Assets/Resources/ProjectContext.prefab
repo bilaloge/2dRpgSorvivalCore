@@ -80,5 +80,7 @@ MonoBehaviour:
   sceneLoadManagerPrefab: {fileID: 6671634653833687117, guid: f5fd6a3bf5e48ff4ead1cf1f1390e399, type: 3}
   gameDataManagerPrefab: {fileID: 2501943422773881037, guid: e4840e456d0e4ed46a24460d15b19937, type: 3}
   playerDataManagerPrefab: {fileID: 7524788808431533226, guid: 2fb924035deb29844bf314635b65b0c5, type: 3}
+  playerUIPrefab: {fileID: 8395004686694282667, guid: f683bac46076a3b42a46dae9975ed9fd, type: 3}
   eventSystemPrefab: {fileID: 606565736980424513, guid: e0e6c2c37df20144388d98937785d28f, type: 3}
   playerStats: {fileID: 11400000, guid: 95717ecfe757f3b4e879af2f84ddf6a5, type: 2}
+  itemDatabase: {fileID: 11400000, guid: e0bc2bd9660599b4bb7b589ca6134893, type: 2}

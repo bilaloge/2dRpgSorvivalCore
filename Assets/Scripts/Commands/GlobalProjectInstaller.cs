@@ -10,20 +10,33 @@ public class GlobalProjectInstaller : MonoInstaller
     [SerializeField] private GameObject sceneLoadManagerPrefab;
     [SerializeField] private GameObject gameDataManagerPrefab;
     [SerializeField] private GameObject playerDataManagerPrefab;
+    [SerializeField] private GameObject playerUIPrefab;
     [SerializeField] private GameObject eventSystemPrefab;
+
+    [Header("ScriptableObject Referanslarý")]
     [SerializeField] private PlayerStats playerStats;
+    [SerializeField] private ItemDatabase itemDatabase;
     public override void InstallBindings()
     {
-        Container.Bind<GameObject>().WithId("Player").FromInstance(playerPrefab);
         Container.BindInstance(playerStats).AsSingle();
-        // Bu komutlar, GameManager ve TimeManager'ý hiyerarþide bulur, 
-        // sisteme tanýtýr ve onlara 'Sen bir Singletonsýn' der.
+
+        itemDatabase.Initialize();// ID lookup sözlüðünü hazýrla
+        Container.BindInstance(itemDatabase).AsSingle();
+
+        Container.BindInterfacesAndSelfTo<InventoryManager>().AsSingle().NonLazy();
+        Container.BindInterfacesAndSelfTo<EquipmentManager>().AsSingle().NonLazy();
+
+        // MonoBehaviour manager'lar
+        Container.Bind<GameObject>().WithId("Player").FromInstance(playerPrefab);
         BindGlobalManager<GameManager>(gameManagerPrefab);
         BindGlobalManager<TimeManager>(timeManagerPrefab);
         BindGlobalManager<SceneLoadManager>(sceneLoadManagerPrefab);
         BindGlobalManager<GameDataManager>(gameDataManagerPrefab);
         BindGlobalManager<PlayerDataManager>(playerDataManagerPrefab);
         BindGlobalManager<EventSystem>(eventSystemPrefab);
+
+        // Her sahneye UI spawn et, tüm child component'ler otomatik inject edilir
+        BindGlobalManager<PlayerUIController>(playerUIPrefab);
     }
     private void BindGlobalManager<T>(GameObject prefab) where T : Component
     {

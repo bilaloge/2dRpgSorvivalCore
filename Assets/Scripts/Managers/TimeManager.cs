@@ -16,6 +16,8 @@ public class TimeManager : MonoBehaviour
     public int Minute => (int)((TotalPlayTime % 3600f) / 60f);
     public int CurrentDay => (int)((TotalPlayTime - (startHour * 3600f)) / 86400f) + 1;
 
+    public bool IsGameTimePaused { get; private set; } = false;
+
     private int _lastMinute = -1;
     private bool _isEveningFired = false;
     private bool _isDayEndFired = false;
@@ -30,14 +32,25 @@ public class TimeManager : MonoBehaviour
     }
     private void Update()
     {
+        if (IsGameTimePaused) return;
+
         TotalPlayTime += Time.deltaTime * gameTimeScale;
-        // Sadece dakika deðiþtiðinde kurallarý kontrol et (PERFORMANS ÝÇÝN)
+
         if (Minute != _lastMinute)
         {
             _lastMinute = Minute;
             OnTimeChanged?.Invoke(Hour, Minute);
             CheckGameRules();
         }
+    }
+    public void PauseGameTime()
+    {
+        IsGameTimePaused = true;
+    }
+
+    public void ResumeGameTime()
+    {
+        IsGameTimePaused = false;
     }
     private void CheckGameRules()
     {

@@ -48,4 +48,8 @@ public class BedController : MonoBehaviour
         _playerDataManager.currentEnergy = Mathf.Min(_playerDataManager.currentEnergy + 30, 100);
         Debug.Log("Dinlenildi, enerji bir miktar tazelendi.");
     }
+    public void Exit()
+    {
+        sleepChoicePanel.SetActive(false);
+    }
 }

@@ -1,33 +1,33 @@
 using System.Collections.Generic;
 
-// Unity'nin JSON sisteminin alt sýnýflarý okuyabilmesi için bu etiket þarttýr.
+// Unity'nin JSON sisteminin alt sÄ±nÄ±flarÄ± okuyabilmesi iÃ§in bu etiket ÅŸarttÄ±r.
 [System.Serializable]
 public class NpcRelationshipData
 {
-    public string npcID; // Örn: "Blacksmith_Gorn"
-    public int relationshipLevel;
+    public string npcID;            // Ã–rn: "Blacksmith_Gorn"
+    public int    relationshipLevel;
 }
 
 [System.Serializable]
 public class CustomWeaponSaveData
 {
-    public int weaponLevel = 1;
-    public int currentDurability = 100; // Sadece anlýk kýrýlma durumu kaydedilir
-    public string enhancementType = "None"; // "Fire", "Poison", "Ice" vb.
+    public int    weaponLevel       = 1;
+    public int    currentDurability = 100;
+    public string enhancementType   = "None"; // "Fire", "Poison", "Ice" vb.
 }
 
 [System.Serializable]
 public class CharacterSaveData
 {
     public string characterName;
-    public int characterLevel;
+    public int    characterLevel;
 
-    [UnityEngine.Header("Anlýk Statlar")]
+    [UnityEngine.Header("AnlÄ±k Statlar")]
     public int currentHealth;
     public int currentMana;
     public int currentEnergy;
 
-    [UnityEngine.Header("Kalýcý Limitler")]
+    [UnityEngine.Header("KalÄ±cÄ± Limitler")]
     public int currentMaxHealth;
     public int currentMaxMana;
     public int currentMaxEnergy;
@@ -35,16 +35,31 @@ public class CharacterSaveData
     [UnityEngine.Header("Durumlar")]
     public int infectionLevel;
 
-    [UnityEngine.Header("Özel Silah Verisi")]
+    [UnityEngine.Header("Ã–zel Silah Verisi")]
     public CustomWeaponSaveData customWeapon = new CustomWeaponSaveData();
 
-    [UnityEngine.Header("NPC Ýliþkileri")]
+    [UnityEngine.Header("NPC Ä°liÅŸkileri")]
     public List<NpcRelationshipData> npcRelationships = new List<NpcRelationshipData>();
 
     [UnityEngine.Header("Envanter")]
-    public List<string> inventoryItemIDs = new List<string>();
-    public List<int> inventoryItemAmounts = new List<int>();
+    // Her index bir slotu temsil eder.
+    // BoÅŸ slot â†’ inventoryItemIDs[i] = "" , inventoryItemAmounts[i] = 0
+    public List<string> inventoryItemIDs     = new List<string>();
+    public List<int>    inventoryItemAmounts = new List<int>();
 
-    public string lastSceneName; // Örn: "StartZone"
-    public string lastSpawnID; // Örn: "Home_Bed_Spawn"
+    // GeniÅŸletilmiÅŸ kapasite kaydedilir; yÃ¼kleme sÄ±rasÄ±nda slot listesi
+    // bu kapasiteye gÃ¶re yeniden oluÅŸturulur.
+    public int inventoryCapacity = 20;
+
+    [UnityEngine.Header("Ekipman")]
+    public string equippedBoots  = string.Empty;
+    public string equippedHead   = string.Empty;
+    public string equippedBodyArmor = string.Empty;
+    public string equippedRing1     = string.Empty;
+    public string equippedRing2     = string.Empty;
+    public string equippedPet       = string.Empty;
+
+    [UnityEngine.Header("Konum")]
+    public string lastSceneName = "StartZone";
+    public string lastSpawnID   = "Default";
 }
